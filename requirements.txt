@@ -31,3 +31,4 @@ termcolor
 #WB/requirements
 wandb
 tensorflow
+ee
