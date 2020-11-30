@@ -27,3 +27,7 @@ six
 joblib
 memoized-property
 termcolor
+
+#WB/requirements
+wandb
+tensorflow

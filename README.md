@@ -1,10 +1,28 @@
 # Data analysis
-- Document here the project: droughtwatch
-- Description: Project Description
-- Data Source:
+- Description: This project leverages deep learning and computer vision for
+drought resilience, using satellite images and human expert labels to detect
+drought conditions in Northern Kenya.
+
+- Data Source: USGS Landsat 8 Collection 1 Tier 1 and Real-Time data Raw Scenes
+
 - Type of analysis:
 
-Please document the project the better you can.
+- Dataset:
+The current dataset consists of 86,317 train and 10,778 validation satellite
+images, 65x65 pixels each, in 10 spectrum bands, with 10,774 images withheld to
+test long-term generalization (107,869 total). Human experts (pastoralists) have
+labeled these with the number of cows that the geographic location at the
+center of the image could support (0, 1, 2, or 3+ cows).Each pixel represents a
+30 meter square, so the images at full size are 1.95 kilometers across.
+Pastoralists are asked to rate the quality of the area within 20 meters of where
+they are standing, which corresponds to an area slightly larger a single pixel.
+Since forage quality is correlated across space, the larger image may be useful
+for prediction.
+
+The data is in TFRecords format, split into train and val, and takes up 4.3GB
+(2.15GB zipped). You can learn more about the format of the satellite images here:
+https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_RT
+
 
 # Startup the project
 
