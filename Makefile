@@ -60,7 +60,10 @@ pypi:
 	@twine upload dist/* -u lologibus2
 
 
-BUCKET_NAME=tfrecords_data
+# ----------------------------------
+#      Google Cloud Platform
+# ----------------------------------
+BUCKET_NAME=datatfrecord
 
 REGION=europe-west1
 
