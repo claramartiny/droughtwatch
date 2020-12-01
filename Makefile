@@ -63,7 +63,7 @@ pypi:
 # ----------------------------------
 #      Google Cloud Platform
 # ----------------------------------
-BUCKET_NAME=datatfrecord
+BUCKET_NAME=tfrecords_data
 
 REGION=europe-west1
 
