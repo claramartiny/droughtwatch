@@ -172,10 +172,11 @@ if __name__ == "__main__":
     val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
 
     # #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    X_tr = train_images["image"][:int((2/3)*TOTAL_TRAIN)]
-    y_tr = train_labels[:int((2/3)*TOTAL_TRAIN)]
-    X_val = train_images["image"][int((2/3)*TOTAL_TRAIN):]
-    y_val = train_labels[int((2/3)*TOTAL_TRAIN):]
+    k = int((2/3)*TOTAL_TRAIN)
+    X_tr = train_images["image"][:]
+    y_tr = train_labels[:k]
+    X_val = train_images["image"][k:]
+    y_val = train_labels[k:]
     X_test = val_images["image"]
     y_test = val_labels
 
@@ -193,9 +194,9 @@ if __name__ == "__main__":
     X_test, y_test = X_test[indices], y_test[indices]
 
     # #Keep only rgb channels for the vgg16 model
-    X_trrgb = X_tr[:,:,:,2:5]
-    X_valrgb = X_val[:,:,:,2:5]
-    X_testrgb = X_test[:,:,:,2:5]
+    X_trrgb = X_tr[:,:,:,1:4]
+    X_valrgb = X_val[:,:,:,1:4]
+    X_testrgb = X_test[:,:,:,1:4]
 
     # #Preprocess the data for the vgg16 model
     # X_train = preprocess_input(X_trrgb)
