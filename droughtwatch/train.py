@@ -13,6 +13,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from keras.models import model_from_json
+from tensorflow.keras.applications import EfficientNetB3
+from tensorflow.keras.layers.experimental import preprocessing
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import layers
 
 tf.enable_eager_execution()
 
@@ -20,7 +24,7 @@ NUM_TRAIN = 16000
 NUM_VAL = 3200
 IMG_DIM = 65
 NUM_CLASSES = 4
-TOTAL_TRAIN = 40000
+TOTAL_TRAIN = 7000
 TOTAL_VAL = 10778
 TOTAL_TRAIN2 = 86317
 TOTAL_VAL2 = 10778
@@ -138,26 +142,23 @@ def add_last_layers(model):
     
     return model
 
-def plot_history(history, title='', axs=None, exp_name=""):
-    if axs is not None:
-        ax1, ax2 = axs
-    else:
-        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-    
-    if len(exp_name) > 0 and exp_name[0] != '_':
-        exp_name = '_' + exp_name
-    ax1.plot(history.history['loss'], label='train' + exp_name)
-    ax1.plot(history.history['val_loss'], label='val' + exp_name)
-    ax1.set_ylim(0., 2.2)
-    ax1.set_title('loss')
-    ax1.legend()
+def plot_hist(hist):
+    plt.plot(hist.history["accuracy"])
+    plt.plot(hist.history["val_accuracy"])
+    plt.title("model accuracy")
+    plt.ylabel("accuracy")
+    plt.xlabel("epoch")
+    plt.legend(["train", "validation"], loc="upper left")
+    plt.show()
 
-    ax2.plot(history.history['accuracy'], label='train accuracy'  + exp_name)
-    ax2.plot(history.history['val_accuracy'], label='val accuracy'  + exp_name)
-    ax2.set_ylim(0.25, 1.)
-    ax2.set_title('Accuracy')
-    ax2.legend()
-    return (ax1, ax2)
+
+
+
+# One-hot / categorical encoding
+def input_preprocess(image, label):
+    label = tf.one_hot(label, NUM_CLASSES)
+    return image, label
+
 
 if __name__ == "__main__":
 
@@ -170,15 +171,15 @@ if __name__ == "__main__":
     train_images, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
     val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
    
-    #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    X_tr = train_images["image"][:30000]
-    y_tr = train_labels[:30000]
-    X_val = train_images["image"][30000:]
-    y_val = train_labels[30000:]
+    # #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
+    X_tr = train_images["image"][:int((2/3)*TOTAL_TRAIN)]
+    y_tr = train_labels[:int((2/3)*TOTAL_TRAIN)]
+    X_val = train_images["image"][int((2/3)*TOTAL_TRAIN):]
+    y_val = train_labels[int((2/3)*TOTAL_TRAIN):]
     X_test = val_images["image"]
     y_test = val_labels
 
-    #Keep only images that are not all blank nor all black and convert the tensors as np arrays
+    # #Keep only images that are not all blank nor all black and convert the tensors as np arrays
     indices = np.where([i[i.std() >= 10].all() for i in X_tr.numpy()])
     X_tr, y_tr = X_tr.numpy(), y_tr.numpy()
     X_tr, y_tr = X_tr[indices], y_tr[indices]
@@ -191,39 +192,77 @@ if __name__ == "__main__":
     X_test, y_test = X_test.numpy(), y_test.numpy()
     X_test, y_test = X_test[indices], y_test[indices]
 
-    #Keep only rgb channels for the vgg16 model
+    # #Keep only rgb channels for the vgg16 model
     X_trrgb = X_tr[:,:,:,2:5]
     X_valrgb = X_val[:,:,:,2:5]
     X_testrgb = X_test[:,:,:,2:5]
-
-    #Preprocess the data for the vgg16 model
-    X_train = preprocess_input(X_trrgb) 
-    X_val = preprocess_input(X_valrgb)
-    X_test = preprocess_input(X_testrgb)
+    
+    # #Preprocess the data for the vgg16 model
+    # X_train = preprocess_input(X_trrgb) 
+    # X_val = preprocess_input(X_valrgb)
+    # X_test = preprocess_input(X_testrgb)
 
     #Build VGG16 model, fit it and evaluate
-    model = build_model(X_trrgb)
+    # model = build_model(X_trrgb)
 
-    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    # es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
 
-    history = model.fit(X_train, y_tr, 
-                        validation_data=(X_val, y_val), 
-                        epochs=1000, 
-                        batch_size=32, 
-                        callbacks=[es],verbose = 1)
+    # history = model.fit(X_train, y_tr, 
+    #                     validation_data=(X_val, y_val), 
+    #                     epochs=1000, 
+    #                     batch_size=32, 
+    #                     callbacks=[es],verbose = 1)
 
-    plot_history(history)
-    plt.show()
+    # plot_history(history)
+    # plt.show()
 
-    res = model.evaluate(X_test, y_test, verbose=1)
+    # res = model.evaluate(X_test, y_test, verbose=1)
 
-    print(f'The accuracy is of {res[1]*100:.3f}%')
+    # print(f'The accuracy is of {res[1]*100:.3f}%')
 
+    #Build EfficientnetB3 model
+    model = EfficientNetB3(weights='imagenet', drop_connect_rate=0.4)
+    IMG_SIZE = 300
+    #ds_train, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
+    #ds_test, test_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
+    ds_train = tf.image.resize(X_trrgb, (300,300))
+    ds_val = tf.image.resize(X_valrgb, (300,300))
+    # ds_train = ds_train.batch(batch_size=32, drop_remainder=True)
+    # ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
+    # ds_test = ds_test.map(input_preprocess)
+    # ds_test = ds_test.batch(batch_size=32, drop_remainder=True)
+    size = (IMG_SIZE, IMG_SIZE)
+   
+    img_augmentation = Sequential(
+         [
+             preprocessing.RandomRotation(factor=0.15),
+             preprocessing.RandomTranslation(height_factor=0.1, width_factor=0.1),
+             preprocessing.RandomFlip(),
+             preprocessing.RandomContrast(factor=0.1),
+          ],
+        name="img_augmentation",
+    )
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope():
+        inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+        x = img_augmentation(inputs)
+        outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
+
+    model = tf.keras.Model(inputs, outputs)
+    model.compile(
+        optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+    )
+
+    model.summary()
+
+    epochs = 40  # @param {type: "slider", min:10, max:100}
+    hist = model.fit(ds_train,y_train,  epochs=epochs, validation_data=(ds_val,y_val), verbose=1)
+    plot_hist(hist)
     #Serialize model to JSON
     model_json = model.to_json()
     with open("model.json", "w") as json_file:
         json_file.write(model_json)
-        
+
     #Serialize weights to HDF5
     model.save_weights("model.h5")
     print("Saved model to disk")
