@@ -32,3 +32,5 @@ termcolor
 wandb
 tensorflow
 ee
+google-cloud-storage
+gcsfs
