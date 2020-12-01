@@ -1,3 +1,5 @@
+import numpy as np
+
 features_list = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7', 'B8','B9','B10','B11']
 
 def dataset_select_channels(train_images,list_of_channels):
