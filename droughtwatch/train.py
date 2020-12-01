@@ -206,7 +206,7 @@ if __name__ == "__main__":
     #Build VGG16 model, fit it and evaluate
     # model = build_model(X_trrgb)
 
-    # es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    #es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
 
     # history = model.fit(X_train, y_tr,
     #                     validation_data=(X_val, y_val),
@@ -255,9 +255,9 @@ if __name__ == "__main__":
     )
 
     model.summary()
-
+    es = EarlyStopping(mode='max', patience=50, verbose=1, restore_best_weights=True)
     epochs = 40  # @param {type: "slider", min:10, max:100}
-    hist = model.fit(ds_train,y_tr,  epochs=epochs, validation_data=(ds_val,y_val), verbose=1)
+    hist = model.fit(ds_train,y_tr,  epochs=1000, validation_data=(ds_val,y_val), verbose=1, callbacks=[es], batch_size=32)
     plot_hist(hist)
     #Serialize model to JSON
     model_json = model.to_json()
