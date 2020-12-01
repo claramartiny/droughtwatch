@@ -8,14 +8,13 @@ import numpy as np
 import os
 from tensorflow.keras import optimizers
 from tensorflow.keras import layers, initializers
+from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from keras.models import model_from_json
 
 tf.enable_eager_execution()
-
-dirlist = lambda di: [os.path.join(di, file) for file in os.listdir(di) if 'part-' in file]
-training_files = dirlist('data/val/')
 
 NUM_TRAIN = 16000
 NUM_VAL = 3200
@@ -33,9 +32,6 @@ def file_list_from_folder(folder, data_path):
         if filename.startswith('part-') and not filename.endswith('gstmp'):
             filelist.append(os.path.join(folderpath, filename))
     return filelist
-
-train = file_list_from_folder("train", "data/")
-val = file_list_from_folder("val", 'data/')
 
 def load_data(data_path):
     train = file_list_from_folder("train", data_path)
@@ -73,7 +69,7 @@ def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
         # one-hot encode ground truth labels 
         label = tf.cast(example['label'], tf.int32)
         label = tf.one_hot(label, NUM_CLASSES)
-        
+
         return {'image': image}, label
     
     tfrecord_dataset = tf.data.TFRecordDataset(filelist) 
@@ -82,17 +78,7 @@ def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
     image, label = tfrecord_iterator.get_next()
     return image, label
 
-    def load_data(data_path):
-        train = file_list_from_folder("train", data_path)
-        val = file_list_from_folder("val", data_path)
-        return train, val
-
-train_tfrecords, val_tfrecords = load_data("data/")
-
-train_images, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
-val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
-
-def initialize_model4():
+def initialize_model():
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.InputLayer(input_shape=(65, 65, 7), name='image'))
     model.add(layers.Conv2D(32, kernel_size=(2, 2), activation='relu'))
@@ -115,21 +101,42 @@ def initialize_model4():
               metrics=['accuracy'])
     return model
 
+def load_model(X_trrgb):
+    model = VGG16(weights="imagenet", include_top=False, input_shape=X_trrgb[0].shape)
+    return model
+
 def compile_model(model):
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
     return model
 
-def build_model():
+def build_model(X_trrgb):
     
-    model = load_model()
+    model = load_model(X_trrgb)
     model = add_last_layers(model)
     model = compile_model(model)
-    
     return model
 
-model2 = build_model()
+def set_nontrainable_layers(model):
+    # Set the first layers to be untrainable
+    model.trainable = False
+    
+    return model
+def add_last_layers(model):
+    base_model = set_nontrainable_layers(model)
+    flatten_layer = layers.Flatten()
+    dense_layer = layers.Dense(500, activation='relu')
+    prediction_layer = layers.Dense(4, activation='softmax')
+    
+    model = models.Sequential([
+        model,
+        flatten_layer,
+        dense_layer,
+        prediction_layer
+    ])
+    
+    return model
 
 def plot_history(history, title='', axs=None, exp_name=""):
     if axs is not None:
@@ -152,95 +159,85 @@ def plot_history(history, title='', axs=None, exp_name=""):
     ax2.legend()
     return (ax1, ax2)
 
-# The data generator
-X_tr = train_images["image"][:30000]
-y_tr = train_labels[:30000]
-X_val = train_images["image"][30000:]
-y_val = train_labels[30000:]
+if __name__ == "__main__":
 
-indices = np.where([i[i.std() >= 10].all() for i in X_tr.numpy()])
-X_tr, y_tr = X_tr.numpy(), y_tr.numpy()
-X_tr, y_tr = X_tr[indices], y_tr[indices]
+    #Get data from directories
+    dirlist = lambda di: [os.path.join(di, file) for file in os.listdir(di) if 'part-' in file]
+    training_files = dirlist('data/val/')
+    train = file_list_from_folder("train", "data/")
+    val = file_list_from_folder("val", 'data/')
+    train_tfrecords, val_tfrecords = load_data("data/")
+    train_images, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
+    val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
+   
+    #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
+    X_tr = train_images["image"][:30000]
+    y_tr = train_labels[:30000]
+    X_val = train_images["image"][30000:]
+    y_val = train_labels[30000:]
+    X_test = val_images["image"]
+    y_test = val_labels
 
-indices = np.where([i[i.std() >= 10].all() for i in X_val.numpy()])
-X_val, y_val = X_val.numpy(), y_val.numpy()
-X_val, y_val = X_val[indices], y_val[indices]
+    #Keep only images that are not all blank nor all black and convert the tensors as np arrays
+    indices = np.where([i[i.std() >= 10].all() for i in X_tr.numpy()])
+    X_tr, y_tr = X_tr.numpy(), y_tr.numpy()
+    X_tr, y_tr = X_tr[indices], y_tr[indices]
 
-indices = np.where([i[i.std() >= 10].all() for i in X_val.numpy()])
-X_val, y_val = X_val.numpy(), y_val.numpy()
-X_val, y_val = X_val[indices], y_val[indices]
+    indices = np.where([i[i.std() >= 10].all() for i in X_val.numpy()])
+    X_val, y_val = X_val.numpy(), y_val.numpy()
+    X_val, y_val = X_val[indices], y_val[indices]
 
-es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    indices = np.where([i[i.std() >= 10].all() for i in X_test.numpy()])
+    X_test, y_test = X_test.numpy(), y_test.numpy()
+    X_test, y_test = X_test[indices], y_test[indices]
 
-history = model2.fit(X_train, y_tr, 
-                     validation_data=(X_val, y_val), 
-                     epochs=1000, 
-                     batch_size=32, 
-                     callbacks=[es],verbose = 1)
+    #Keep only rgb channels for the vgg16 model
+    X_trrgb = X_tr[:,:,:,2:5]
+    X_valrgb = X_val[:,:,:,2:5]
+    X_testrgb = X_test[:,:,:,2:5]
 
-plot_history(history)
-plt.show()
+    #Preprocess the data for the vgg16 model
+    X_train = preprocess_input(X_trrgb) 
+    X_val = preprocess_input(X_valrgb)
+    X_test = preprocess_input(X_testrgb)
 
-X_trrgb = X_tr[:,:,:,2:5]
-X_valrgb = X_val[:,:,:,2:5]
-X_testrgb = X_test[:,:,:,2:5]
-X_train = preprocess_input(X_trrgb) 
-X_val = preprocess_input(X_valrgb)
-X_test = preprocess_input(X_testrgb)
+    #Build VGG16 model, fit it and evaluate
+    model = build_model(X_trrgb)
 
-res = model2.evaluate(X_test, y_test, verbose=1)
+    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
 
-print(f'The accuracy is of {res[1]*100:.3f}%')
+    history = model.fit(X_train, y_tr, 
+                        validation_data=(X_val, y_val), 
+                        epochs=1000, 
+                        batch_size=32, 
+                        callbacks=[es],verbose = 1)
 
-from keras.preprocessing.image import ImageDataGenerator
+    plot_history(history)
+    plt.show()
 
-datagen = ImageDataGenerator(
-    featurewise_center=False,
-    featurewise_std_normalization=False,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    horizontal_flip=True,
-    brightness_range=(0.5, 1.),
-    zoom_range=(0.5, 1.2))
+    res = model.evaluate(X_test, y_test, verbose=1)
 
+    print(f'The accuracy is of {res[1]*100:.3f}%')
 
-# compute quantities required for featurewise normalization
-# (std, mean, and principal components if ZCA whitening is applied)
-datagen.fit(X_trrgb)
+    #Serialize model to JSON
+    model_json = model.to_json()
+    with open("model.json", "w") as json_file:
+        json_file.write(model_json)
+        
+    #Serialize weights to HDF5
+    model.save_weights("model.h5")
+    print("Saved model to disk")
 
-model_data_aug = build_model()
-
-train_flow = datagen.flow(X_trrgb, y_tr, batch_size=16)
-val_flow = datagen.flow(X_valrgb, y_val, batch_size=16)
-es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
-history_data_aug = model_data_aug.fit_generator(train_flow, epochs=1000, validation_data=val_flow, callbacks=[es])
-
-res = model_data_aug.evaluate(X_testrgb, y_test, verbose=1)
-
-print(f'The accuracy is of {res[1]*100:.3f}%')
-
-plot_history(history_data_aug)
-
-# serialize model to JSON
-model_json = model_data_aug.to_json()
-with open("model.json", "w") as json_file:
-    json_file.write(model_json)
-# serialize weights to HDF5
-model_data_aug.save_weights("model.h5")
-print("Saved model to disk")
-
-# load json and create model
-json_file = open('model.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-loaded_model = model_from_json(loaded_model_json)
-# load weights into new model
-loaded_model.load_weights("model.h5")
-print("Loaded model from disk")
- 
-# evaluate loaded model on test data
-loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-score = loaded_model.evaluate(X_testrgb, y_test, verbose=1)
-print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
-
+    # load json and create model
+    json_file = open('model.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    loaded_model.load_weights("model.h5")
+    print("Loaded model from disk")
+    
+    # evaluate loaded model on test data
+    loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    score = loaded_model.evaluate(X_testrgb, y_test, verbose=1)
+    print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
