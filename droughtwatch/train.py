@@ -173,7 +173,7 @@ if __name__ == "__main__":
 
     # #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     k = int((2/3)*TOTAL_TRAIN)
-    X_tr = train_images["image"][:]
+    X_tr = train_images["image"][:k]
     y_tr = train_labels[:k]
     X_val = train_images["image"][k:]
     y_val = train_labels[k:]
