@@ -1,3 +1,4 @@
+import os
 
 def file_list_from_folder(folder, data_path):
     folderpath = os.path.join(data_path, folder)
