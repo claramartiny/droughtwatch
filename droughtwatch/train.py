@@ -61,22 +61,22 @@ def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
     # try a subset of possible bands
     def _parse_(serialized_example, keylist=['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']):
         example = tf.io.parse_single_example(serialized_example, features)
-    
+
         def getband(example_key):
             img = tf.io.decode_raw(example_key, tf.uint8)
             return tf.reshape(img[:IMG_DIM**2], shape=(IMG_DIM, IMG_DIM, 1))
-        
+
         bandlist = [getband(example[key]) for key in keylist]
         # combine bands into tensor
         image = tf.concat(bandlist, -1)
 
-        # one-hot encode ground truth labels 
+        # one-hot encode ground truth labels
         label = tf.cast(example['label'], tf.int32)
         label = tf.one_hot(label, NUM_CLASSES)
 
         return {'image': image}, label
-    
-    tfrecord_dataset = tf.data.TFRecordDataset(filelist) 
+
+    tfrecord_dataset = tf.data.TFRecordDataset(filelist)
     tfrecord_dataset = tfrecord_dataset.map(lambda x:_parse_(x)).shuffle(buffer_size).repeat(-1).batch(batch_size)
     tfrecord_iterator = tfrecord_dataset.make_one_shot_iterator()
     image, label = tfrecord_iterator.get_next()
@@ -116,7 +116,7 @@ def compile_model(model):
     return model
 
 def build_model(X_trrgb):
-    
+
     model = load_model(X_trrgb)
     model = add_last_layers(model)
     model = compile_model(model)
@@ -125,21 +125,21 @@ def build_model(X_trrgb):
 def set_nontrainable_layers(model):
     # Set the first layers to be untrainable
     model.trainable = False
-    
+
     return model
 def add_last_layers(model):
     base_model = set_nontrainable_layers(model)
     flatten_layer = layers.Flatten()
     dense_layer = layers.Dense(500, activation='relu')
     prediction_layer = layers.Dense(4, activation='softmax')
-    
+
     model = models.Sequential([
         model,
         flatten_layer,
         dense_layer,
         prediction_layer
     ])
-    
+
     return model
 
 def plot_hist(hist):
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     train_tfrecords, val_tfrecords = load_data("data/")
     train_images, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
     val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
-   
+
     # #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     X_tr = train_images["image"][:int((2/3)*TOTAL_TRAIN)]
     y_tr = train_labels[:int((2/3)*TOTAL_TRAIN)]
@@ -196,9 +196,9 @@ if __name__ == "__main__":
     X_trrgb = X_tr[:,:,:,2:5]
     X_valrgb = X_val[:,:,:,2:5]
     X_testrgb = X_test[:,:,:,2:5]
-    
+
     # #Preprocess the data for the vgg16 model
-    # X_train = preprocess_input(X_trrgb) 
+    # X_train = preprocess_input(X_trrgb)
     # X_val = preprocess_input(X_valrgb)
     # X_test = preprocess_input(X_testrgb)
 
@@ -207,10 +207,10 @@ if __name__ == "__main__":
 
     # es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
 
-    # history = model.fit(X_train, y_tr, 
-    #                     validation_data=(X_val, y_val), 
-    #                     epochs=1000, 
-    #                     batch_size=32, 
+    # history = model.fit(X_train, y_tr,
+    #                     validation_data=(X_val, y_val),
+    #                     epochs=1000,
+    #                     batch_size=32,
     #                     callbacks=[es],verbose = 1)
 
     # plot_history(history)
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     # ds_test = ds_test.map(input_preprocess)
     # ds_test = ds_test.batch(batch_size=32, drop_remainder=True)
     size = (IMG_SIZE, IMG_SIZE)
-   
+
     img_augmentation = Sequential(
          [
              preprocessing.RandomRotation(factor=0.15),
@@ -242,11 +242,11 @@ if __name__ == "__main__":
           ],
         name="img_augmentation",
     )
-    strategy = tf.distribute.MirroredStrategy()
-    with strategy.scope():
-        inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
-        x = img_augmentation(inputs)
-        outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
+
+
+    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    x = img_augmentation(inputs)
+    outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
 
     model = tf.keras.Model(inputs, outputs)
     model.compile(
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     model.summary()
 
     epochs = 40  # @param {type: "slider", min:10, max:100}
-    hist = model.fit(ds_train,y_train,  epochs=epochs, validation_data=(ds_val,y_val), verbose=1)
+    hist = model.fit(ds_train,y_tr,  epochs=epochs, validation_data=(ds_val,y_val), verbose=1)
     plot_hist(hist)
     #Serialize model to JSON
     model_json = model.to_json()
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     # load weights into new model
     loaded_model.load_weights("model.h5")
     print("Loaded model from disk")
-    
+
     # evaluate loaded model on test data
     loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     score = loaded_model.evaluate(X_testrgb, y_test, verbose=1)
