@@ -83,8 +83,9 @@ def efficientnet_model():
     activationnetB3 = EfficientNetB3(include_top=False, weights = "imagenet")(x)
     outputsflatten = layers.Flatten()(activationnetB3)
     outputsdense1 = layers.Dense(64, activation = "relu")(outputsflatten)
-    outputsdense2 = layers.Dense(4, activation = "softmax")(outputsdense1)
-    model = tf.keras.Model(inputs, outputsdense2)
+    outputsdense2 = layers.Dense(64, activation = "relu")(outputsdense1)
+    outputsdense3 = layers.Dense(4, activation = "softmax")(outputsdense2)
+    model = tf.keras.Model(inputs, outputsdense3)
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
     return model
 
