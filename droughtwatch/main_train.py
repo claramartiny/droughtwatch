@@ -92,7 +92,7 @@ def efficientnet_model():
 def train_efficient_net(X_train, X_val, y_train, y_val):
     #----- Train model ------
     # We only need B2,B3 and B4
-    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=2, verbose=1, restore_best_weights=True)
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen.fit(X_train)
@@ -137,7 +137,7 @@ def save_model(model, upload=True, auto_remove=True):
     print("uploaded model.h5 to gcp cloud storage under \n => {}".format(storage_location))
 
 
-def load_model_from_gcp(model_from_gcp):
+def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
     ''' not finished'''
     # load json and create model
     json_file = open(modeljson_from_gcp, 'r')
@@ -160,40 +160,52 @@ def load_model_from_gcp(model_from_gcp):
 ##------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL)
-
+    print(colored("############  loading data ############", "blue"))
+    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
+    print(colored(f"############  data is loaded ############", "green"))
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    k = int(0.5 * SIZE_VAL)
-
-    X_train = X_train["image"]
-    X_val = X_val_total["image"][:k]
-    y_val = y_val_total[:k]
-    X_test = X_val_total["image"][k:]
-    y_test = y_val_total[k:]
-
+    k = int(0.8 * SIZE_TRAIN)
+    # X_train = X_train["image"][:k]
+    # X_val = X_val_total["image"][:k]
+    # y_val = y_val_total[:k]
+    # X_test = X_val_total["image"][k:]
+    # y_test = y_val_total[k:]
+    print(colored("############  Proceding to Hold-Out ############", "blue"))
+    X_tr = X_train["image"][:k]
+    y_tr = y_train[:k]
+    X_val = X_train["image"][k:]
+    y_val = y_train[k:]
+    X_test = X_val_total["image"]
+    y_test = y_val_total
+    print(colored(f"############  Hold-Out OK ############", "green"))
     #Clean data 
-    X_train,y_train = clean_data(X_train,y_train)
+    print(colored("############  Cleaning Data ############", "blue"))
+    X_tr,y_tr = clean_data(X_tr,y_tr)
     X_val,y_val = clean_data(X_val,y_val)
     X_test,y_test = clean_data(X_test,y_test)
-
+    print(colored(f"############  Data-Cleaned ############", "green"))
     # Select features 
     #list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
     #LIST OF CHANNELS FOR EFFICIENTNETB3 MODEL
     list_of_channels = ['B4', 'B3', 'B2']
-    
-    X_train = dataset_select_channels(X_train,list_of_channels)
+    print(colored("############  Selecting RGB color channels ############", "blue"))
+    X_tr = dataset_select_channels(X_tr,list_of_channels)
     X_val = dataset_select_channels(X_val,list_of_channels)
     X_test = dataset_select_channels(X_test,list_of_channels)
-
+    print(colored(f"############  RGB channel selection done ############", "green"))
     # Model to run:
     #----- Instanciate model ------
     model = efficientnet_model()
 
     #----- Train model ------
-    train_efficient_net(X_train, X_val, y_train, y_val)
+    print(colored("############  Training Model ############", "blue"))
+    history = train_efficient_net(X_tr, X_val, y_tr, y_val)
+    print(history.history["accuracy"])
+    print(history.history["val_accuracy"])
+    print(colored(f"############  Model Trained ############", "green"))
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
+    X_test = Resizing(300, 300)(X_test)
     results = model.evaluate(X_test,y_test,verbose=1)
     print(f'Accuracy:{results[1]}')
     
