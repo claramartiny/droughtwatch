@@ -6,7 +6,7 @@ def clean_data(X,y):
         empty_images = []
         X = np.array(X)
         for i in range(X.shape[0]):
-            if data[i].std() < 10:
+            if X[i].std() < 10:
                 empty_images.append(i)
         return empty_images
     X = np.array(X)
