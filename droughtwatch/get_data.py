@@ -29,6 +29,9 @@ features = {
   'label': tf.io.FixedLenFeature([], tf.int64),
 }
 
+BUCKET_NAME = 'tfrecords_data'
+BUCKET_DATA_PATH = 'data'
+
 # B1  30 meters   0.43 - 0.45 µm  Coastal aerosol
 # B2  30 meters   0.45 - 0.51 µm  Blue
 # B3  30 meters   0.53 - 0.59 µm  Green
@@ -41,7 +44,7 @@ features = {
 # B10 30 meters   10.60 - 11.19 µm Thermal infrared 1, resampled from 100m to 30m
 # B11 30 meters   11.50 - 12.51 µm Thermal infrared 2, resampled from 100m to 30m
 
-def get_data(train_data_size, val_data_size):
+def get_data(train_data_size, val_data_size, local=False):
 
     def load_data(data_path):
         train = file_list_from_folder("train", data_path)
@@ -82,16 +85,28 @@ def get_data(train_data_size, val_data_size):
         return image, label
 
 
-    # Merge folders containing parts of the dataset into one folder
-    dirlist = lambda di: [os.path.join(di, file)\
-    for file in os.listdir(di) if 'part-' in file]
+    if local:
 
-    train_tfrecords, val_tfrecords = load_data("droughtwatch/data/")
+      path = "droughtwatch/data/"
+
+    else:
+
+      path = "gs://{}/{}".format(BUCKET_NAME, BUCKET_TRAIN_DATA_PATH)
+
+      # Merge folders containing parts of the dataset into one folder
+      #dirlist = lambda di: [os.path.join(di, file)\
+      #for file in os.listdir(di) if 'part-' in file]
+
+    train_tfrecords, val_tfrecords = load_data(path)
 
     X_train, y_train = parse_tfrecords(train_tfrecords, train_data_size, train_data_size)
     X_val, y_val = parse_tfrecords(val_tfrecords, val_data_size, val_data_size)
 
     return X_train, X_val, y_train, y_val
+
+
+
+
 
 
     #training_files = dirlist('data/train/')
