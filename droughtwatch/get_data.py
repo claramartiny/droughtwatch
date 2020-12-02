@@ -84,18 +84,10 @@ def get_data(train_data_size, val_data_size, local=False):
         image, label = tfrecord_iterator.get_next()
         return image, label
 
-
     if local:
-
       path = "droughtwatch/data/"
-
     else:
-
-      path = "gs://{}/{}".format(BUCKET_NAME, BUCKET_TRAIN_DATA_PATH)
-
-      # Merge folders containing parts of the dataset into one folder
-      #dirlist = lambda di: [os.path.join(di, file)\
-      #for file in os.listdir(di) if 'part-' in file]
+      path = "gs://{}/{}".format(BUCKET_NAME, BUCKET_DATA_PATH)
 
     train_tfrecords, val_tfrecords = load_data(path)
 
@@ -114,3 +106,7 @@ def get_data(train_data_size, val_data_size, local=False):
     #train = file_list_from_folder("train", "data/")
     #val = file_list_from_folder("val", 'data/')
 
+
+      # Merge folders containing parts of the dataset into one folder
+      #dirlist = lambda di: [os.path.join(di, file)\
+      #for file in os.listdir(di) if 'part-' in file]
