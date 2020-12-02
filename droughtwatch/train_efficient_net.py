@@ -30,49 +30,8 @@ MODEL_VERSION = 'v1_CM'
 
 tf.enable_eager_execution()
 
-# Features selection
 
-#model 1: baseline model
-##------------------------------------------------------------------------------------------------
-
-def baseline_model():
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.InputLayer(input_shape=(65, 65, 7), name='image'))
-    model.add(layers.Conv2D(32, kernel_size=(2, 2), activation='relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-    model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
-    model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-    model.add(layers.Dropout(0.2))
-    model.add(layers.Conv2D(filters=128, kernel_size=(2, 2), activation='relu'))
-    model.add(layers.Conv2D(filters=128, kernel_size=(2, 2), activation='relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
-    model.add(layers.Dropout(0.2))
-    model.add(layers.Flatten())
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(4, activation='softmax'))
-    # set up optimizer
-    model.compile(loss=tf.keras.losses.categorical_crossentropy,
-              optimizer='adam',
-              metrics=['accuracy'])
-    return model
-
-
-#model 2: VGG16 model 
-##------------------------------------------------------------------------------------------------
-### Convert images to RGB format first using dataset_select_channels ###
-
-def vgg16_model():
-    model = VGG16(weights="imagenet", include_top=False, input_shape=X_trrgb[0].shape)
-    
-    model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
-    return model
-
-
-#model 3: EfficientNetB3 model 
+#model: EfficientNetB3 model
 ##------------------------------------------------------------------------------------------------
 def efficientnet_model(X_trrgb, X_valrgb, y_tr, y_val):
     ''' Modèle efficientnet B3'''
@@ -157,14 +116,14 @@ if __name__ == "__main__":
     X_test = X_val_total["image"][k:]
     y_test = y_val_total[k:]
 
-    #Clean data 
+    #Clean data
     X_train,y_train = clean_data(X_train,y_train)
     X_val,y_val = clean_data(X_val,y_val)
     X_test,y_test = clean_data(X_test,y_test)
 
-    # Select features 
+    # Select features
     list_of_channels = ['B4', 'B3', 'B2']
-    
+
     X_train = dataset_select_channels(X_train,list_of_channels)
     X_val = dataset_select_channels(X_val,list_of_channels)
     X_test = dataset_select_channels(X_test,list_of_channels)
@@ -175,8 +134,8 @@ if __name__ == "__main__":
 
     #----- Train model ------
     es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
-   
-    
+
+
     print(colored("############  Training model   ############", "red"))
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
@@ -185,13 +144,13 @@ if __name__ == "__main__":
 
     history = model.fit(datagen.flow(X_train, y_train, batch_size=32),\
          epochs=1000, validation_data = datagen2.flow(X_val, y_val, batch_size = 32), verbose = 1,\
-             callbacks=[es]) 
-    
+             callbacks=[es])
+
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
     results = model.evaluate(X_test,y_test,verbose=1)
     print(f'Accuracy:{results[1]}')
-    
+
     #----- Save model ------
     print(colored("############   Saving model    ############", "green"))
     save_model(model)
