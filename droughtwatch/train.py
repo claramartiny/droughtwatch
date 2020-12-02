@@ -25,7 +25,7 @@ NUM_TRAIN = 16000
 NUM_VAL = 3200
 IMG_DIM = 65
 NUM_CLASSES = 4
-TOTAL_TRAIN = 5000
+TOTAL_TRAIN = 10000
 TOTAL_VAL = 10778
 TOTAL_TRAIN2 = 86317
 TOTAL_VAL2 = 10778
@@ -235,25 +235,11 @@ if __name__ == "__main__":
     # print(f'The accuracy is of {res[1]*100:.3f}%')
 
     #Build EfficientnetB3 model
-    #model = EfficientNetB3(weights='imagenet', drop_connect_rate=0.4)
     IMG_SIZE = 300
-    #ds_train, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
-    #ds_test, test_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
-    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    featurewise_center=True,
-    featurewise_std_normalization=True,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    horizontal_flip=True)
+ 
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator()
 
-    datagen2 = tf.keras.preprocessing.image.ImageDataGenerator(
-    featurewise_center=True,
-    featurewise_std_normalization=True,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    horizontal_flip=True)
+    datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     # compute quantities required for featurewise normalization
     # (std, mean, and principal components if ZCA whitening is applied)
     datagen.fit(X_trrgb)
@@ -280,53 +266,14 @@ if __name__ == "__main__":
     outputsdense2 = layers.Dense(4, activation = "softmax")(outputsdense1)
     model = tf.keras.Model(inputs, outputsdense2)
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    # fits the model on batches with real-time data augmentation:
-    # model.fit(datagen.flow(x_train, y_train, batch_size=32),
-    #         steps_per_epoch=len(x_train) / 32, epochs=epochs)
-    # here's a more "manual" example
-    # for e in range(1000):
-    #     print('Epoch', e)
-    #     batches = 0
-    #     for x_batch, y_batch in datagen.flow(X_trrgb, y_tr, batch_size=16):
-    #         x_batch = tf.image.resize(x_batch,(300,300))
-    #         model.fit(x_batch, y_batch, verbose = 1)
-    #         batches += 1
-    #         if batches >= len(X_trrgb) / 16:
-    #             # we need to break the loop by hand because
-    #             # the generator loops indefinitely
-    #             break
     es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
     history = model.fit(datagen.flow(X_trrgb, y_tr, batch_size=32),\
-         epochs=1000, validation_data = datagen.flow(X_valrgb, y_val, batch_size = 32), verbose = 1,\
+         epochs=1000, validation_data = datagen2.flow(X_valrgb, y_val, batch_size = 32), verbose = 1,\
              callbacks=[es])
-    #print("resizing images...")
-    # ds_train = tf.image.resize(X_trrgb, (300,300))
-    # ds_val = tf.image.resize(X_valrgb, (300,300))
-    #print("finished resizing images!")
     del X_trrgb
     del X_valrgb
-    # ds_train = ds_train.batch(batch_size=32, drop_remainder=True)
-    # ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
-    # ds_test = ds_test.map(input_preprocess)
-    # ds_test = ds_test.batch(batch_size=32, drop_remainder=True)
-    # size = (IMG_SIZE, IMG_SIZE)
 
- 
-
-
-    # inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
-    # x = img_augmentation(inputs)
-    # outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
-
-    # model = tf.keras.Model(inputs, outputs)
-    # model.compile(
-    # optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
-    # )
-
-    # model.summary()
-    # es = EarlyStopping(mode='max', patience=50, verbose=1, restore_best_weights=True)
-    # hist = model.fit(ds_train, y_tr,  epochs=1000, validation_data=(ds_val,y_val), verbose=1, callbacks=[es], batch_size=16)
-    # plot_hist(hist)
+    plot_hist(history)
     #Serialize model to JSON
     model_json = model.to_json()
     with open("model.json", "w") as json_file:
