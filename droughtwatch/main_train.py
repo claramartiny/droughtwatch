@@ -10,6 +10,8 @@ from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.layers.experimental.preprocessing import Resizing
+from tensorflow.keras.applications import EfficientNetB3
 import joblib
 from termcolor import colored
 from google.cloud import storage
@@ -22,7 +24,7 @@ from droughtwatch.utils import dataset_select_channels
 from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
 
 BUCKET_NAME = 'tfrecords_data'
-MODEL_NAME = 'efficientnet'
+MODEL_NAME = 'efficientnet_model'
 MODEL_VERSION = 'v1_CM'
 
 
@@ -73,9 +75,33 @@ def vgg16_model():
 #model 3: EfficientNetB3 model 
 ##------------------------------------------------------------------------------------------------
 def efficientnet_model():
-    ''' Après Ludo & Camil''' 
-    pass
+    ''' Modèle efficientnet B3'''
+    IMG_SIZE = 300
+    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    x = inputs
+    x = Resizing(300, 300)(x)
+    activationnetB3 = EfficientNetB3(include_top=False, weights = "imagenet")(x)
+    outputsflatten = layers.Flatten()(activationnetB3)
+    outputsdense1 = layers.Dense(64, activation = "relu")(outputsflatten)
+    outputsdense2 = layers.Dense(4, activation = "softmax")(outputsdense1)
+    model = tf.keras.Model(inputs, outputsdense2)
+    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    return model
 
+def train_efficient_net(X_train, X_val, y_train, y_val):
+    #----- Train model ------
+    # We only need B2,B3 and B4
+    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator()
+    datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
+    datagen.fit(X_train)
+    datagen2.fit(X_val)
+
+    history = model.fit(datagen.flow(X_train, y_train, batch_size=32),\
+         epochs=1000, validation_data = datagen2.flow(X_val, y_val, batch_size = 32), verbose = 1,\
+             callbacks=[es])
+
+    return history  
 
 def save_model(model, upload=True, auto_remove=True):
     """Save the model into 2 versions: a .json and .h5 and upload them on Google Storage /models folder"""
@@ -151,7 +177,9 @@ if __name__ == "__main__":
     X_test,y_test = clean_data(X_test,y_test)
 
     # Select features 
-    list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
+    #list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
+    #LIST OF CHANNELS FOR EFFICIENTNETB3 MODEL
+    list_of_channels = ['B4', 'B3', 'B2']
     
     X_train = dataset_select_channels(X_train,list_of_channels)
     X_val = dataset_select_channels(X_val,list_of_channels)
@@ -159,19 +187,10 @@ if __name__ == "__main__":
 
     # Model to run:
     #----- Instanciate model ------
-    model = baseline_model()
+    model = efficientnet_model()
 
     #----- Train model ------
-    es = EarlyStopping(patience=2,restore_best_weights=True)
-    
-    print(colored("############  Training model   ############", "red"))
-    model.fit(X_train, y_train,
-            batch_size=16,
-            epochs=100,
-            validation_data=(X_val,y_val),
-            callbacks=[es],
-            verbose=1)
-    
+    train_efficient_net(X_train, X_val, y_train, y_val)
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
     results = model.evaluate(X_test,y_test,verbose=1)
