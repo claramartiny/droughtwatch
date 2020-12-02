@@ -93,7 +93,7 @@ def efficientnet_model():
 def train_efficient_net(X_train, X_val, y_train, y_val):
     #----- Train model ------
     # We only need B2,B3 and B4
-    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=2, verbose=1, restore_best_weights=True)
+    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen.fit(X_train)
@@ -162,7 +162,7 @@ def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
 
 if __name__ == "__main__":
     print(colored("############  loading data ############", "blue"))
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
+    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = False)
     print(colored(f"############  data is loaded ############", "green"))
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     k = int(0.8 * SIZE_TRAIN)
