@@ -4,3 +4,4 @@
 .DS_Store
 raw_data/
 droughtwatch/data/
+__pycache__/
