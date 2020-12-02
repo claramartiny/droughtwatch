@@ -22,7 +22,7 @@ from droughtwatch.utils import dataset_select_channels
 from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
 
 BUCKET_NAME = 'tfrecords_data'
-MODEL_NAME = 'droughtwatch'
+MODEL_NAME = 'efficientnet'
 MODEL_VERSION = 'v1_CM'
 
 
@@ -78,7 +78,7 @@ def efficientnet_model():
 
 
 def save_model(model, upload=True, auto_remove=True):
-    """Save the model into a .joblib and upload it on Google Storage /models folder"""
+    """Save the model into 2 versions: a .json and .h5 and upload them on Google Storage /models folder"""
     model_json = model.to_json()
     local_model_name = 'model.json'
     local_weights_name = 'model.h5'
@@ -111,6 +111,7 @@ def save_model(model, upload=True, auto_remove=True):
 
 
 def load_model_from_gcp(model_from_gcp):
+    ''' not finished'''
     # load json and create model
     json_file = open(modeljson_from_gcp, 'r')
     loaded_model_json = json_file.read()
