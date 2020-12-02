@@ -24,7 +24,7 @@ NUM_TRAIN = 16000
 NUM_VAL = 3200
 IMG_DIM = 65
 NUM_CLASSES = 4
-TOTAL_TRAIN = 7000
+TOTAL_TRAIN = 5000
 TOTAL_VAL = 10778
 TOTAL_TRAIN2 = 86317
 TOTAL_VAL2 = 10778
@@ -163,14 +163,12 @@ def input_preprocess(image, label):
 if __name__ == "__main__":
 
     #Get data from directories
-    dirlist = lambda di: [os.path.join(di, file) for file in os.listdir(di) if 'part-' in file]
-    training_files = dirlist('data/val/')
-    train = file_list_from_folder("train", "data/")
-    val = file_list_from_folder("val", 'data/')
+    print("loading data")
     train_tfrecords, val_tfrecords = load_data("data/")
     train_images, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
     val_images, val_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
-
+    print("Finished loading data!")
+    print("Preparing hold out...")
     # #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     k = int((2/3)*TOTAL_TRAIN)
     X_tr = train_images["image"][:k]
@@ -180,7 +178,14 @@ if __name__ == "__main__":
     X_test = val_images["image"]
     y_test = val_labels
 
+    print("deleting unused variables...")
+    del train_tfrecords
+    del val_tfrecords
+    del val_images
+    del val_labels
+
     # #Keep only images that are not all blank nor all black and convert the tensors as np arrays
+    print("Filtering blank and black images")
     indices = np.where([i[i.std() >= 10].all() for i in X_tr.numpy()])
     X_tr, y_tr = X_tr.numpy(), y_tr.numpy()
     X_tr, y_tr = X_tr[indices], y_tr[indices]
@@ -192,11 +197,18 @@ if __name__ == "__main__":
     indices = np.where([i[i.std() >= 10].all() for i in X_test.numpy()])
     X_test, y_test = X_test.numpy(), y_test.numpy()
     X_test, y_test = X_test[indices], y_test[indices]
-
+    print("finished filtering blank and black images")
     # #Keep only rgb channels for the vgg16 model
+    print("converting images to rgb ...")
     X_trrgb = X_tr[:,:,:,1:4]
     X_valrgb = X_val[:,:,:,1:4]
     X_testrgb = X_test[:,:,:,1:4]
+    print("finished converting images to rgb")
+
+    print("deleting unused variables")
+    del X_tr
+    del X_val
+    del X_test
 
     # #Preprocess the data for the vgg16 model
     # X_train = preprocess_input(X_trrgb)
@@ -226,39 +238,74 @@ if __name__ == "__main__":
     IMG_SIZE = 300
     #ds_train, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
     #ds_test, test_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
-    ds_train = tf.image.resize(X_trrgb, (300,300))
-    ds_val = tf.image.resize(X_valrgb, (300,300))
-    # ds_train = ds_train.batch(batch_size=32, drop_remainder=True)
-    # ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
-    # ds_test = ds_test.map(input_preprocess)
-    # ds_test = ds_test.batch(batch_size=32, drop_remainder=True)
-    size = (IMG_SIZE, IMG_SIZE)
-
-    img_augmentation = Sequential(
-         [
-             preprocessing.RandomRotation(factor=0.15),
-             preprocessing.RandomTranslation(height_factor=0.1, width_factor=0.1),
-             preprocessing.RandomFlip(),
-             preprocessing.RandomContrast(factor=0.1),
-          ],
-        name="img_augmentation",
-    )
-
-
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+    featurewise_center=True,
+    featurewise_std_normalization=True,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    horizontal_flip=True)
+    # compute quantities required for featurewise normalization
+    # (std, mean, and principal components if ZCA whitening is applied)
+    datagen.fit(X_trrgb)
     inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    img_augmentation = Sequential(
+    [
+    preprocessing.RandomRotation(factor=0.15),
+    preprocessing.RandomTranslation(height_factor=0.1, width_factor=0.1),
+    preprocessing.RandomFlip(),
+    preprocessing.RandomContrast(factor=0.1),
+    ],
+    name="img_augmentation",
+    )
     x = img_augmentation(inputs)
     outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
 
     model = tf.keras.Model(inputs, outputs)
-    model.compile(
-        optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
-    )
+    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    # fits the model on batches with real-time data augmentation:
+    # model.fit(datagen.flow(x_train, y_train, batch_size=32),
+    #         steps_per_epoch=len(x_train) / 32, epochs=epochs)
+    # here's a more "manual" example
+    for e in range(1000):
+        print('Epoch', e)
+        batches = 0
+        for x_batch, y_batch in datagen.flow(X_trrgb, y_tr, batch_size=16):
+            x_batch = tf.image.resize(x_batch,(300,300))
+            model.fit(x_batch, y_batch, verbose = 1)
+            batches += 1
+            if batches >= len(X_trrgb) / 16:
+                # we need to break the loop by hand because
+                # the generator loops indefinitely
+                break
+    #print("resizing images...")
+    # ds_train = tf.image.resize(X_trrgb, (300,300))
+    # ds_val = tf.image.resize(X_valrgb, (300,300))
+    #print("finished resizing images!")
+    del X_trrgb
+    del X_valrgb
+    # ds_train = ds_train.batch(batch_size=32, drop_remainder=True)
+    # ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
+    # ds_test = ds_test.map(input_preprocess)
+    # ds_test = ds_test.batch(batch_size=32, drop_remainder=True)
+    # size = (IMG_SIZE, IMG_SIZE)
 
-    model.summary()
-    es = EarlyStopping(mode='max', patience=50, verbose=1, restore_best_weights=True)
-    epochs = 40  # @param {type: "slider", min:10, max:100}
-    hist = model.fit(ds_train,y_tr,  epochs=1000, validation_data=(ds_val,y_val), verbose=1, callbacks=[es], batch_size=32)
-    plot_hist(hist)
+ 
+
+
+    # inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    # x = img_augmentation(inputs)
+    # outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
+
+    # model = tf.keras.Model(inputs, outputs)
+    # model.compile(
+    # optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"]
+    # )
+
+    # model.summary()
+    # es = EarlyStopping(mode='max', patience=50, verbose=1, restore_best_weights=True)
+    # hist = model.fit(ds_train, y_tr,  epochs=1000, validation_data=(ds_val,y_val), verbose=1, callbacks=[es], batch_size=16)
+    # plot_hist(hist)
     #Serialize model to JSON
     model_json = model.to_json()
     with open("model.json", "w") as json_file:
