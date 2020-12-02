@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import numpy as np
 import tensorflow.compat.v1 as tf
 import argparse
@@ -200,9 +201,18 @@ if __name__ == "__main__":
     #----- Train model ------
     print(colored("############  Training Model ############", "blue"))
     history = train_efficient_net(X_tr, X_val, y_tr, y_val)
-    print(history.history["accuracy"])
-    print(history.history["val_accuracy"])
     print(colored(f"############  Model Trained ############", "green"))
+
+    #----- Exporting history.csv ------
+    print(colored("############  Exporting history as CSV ############", "blue")) 
+    adict = {}
+    adict["accuracy"]=history.history["accuracy"]
+    adict["val_accuracy"]=history.history["val_accuracy"]
+    df = pd.DataFrame(adict)
+    df.to_csv("history.csv")
+    print(df)
+    print(colored("############ history.csv exported ############", "blue")) 
+
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
     X_test = Resizing(300, 300)(X_test)
