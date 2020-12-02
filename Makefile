@@ -72,7 +72,7 @@ FRAMEWORK=scikit-learn
 RUNTIME_VERSION=1.15
 
 PACKAGE_NAME=droughtwatch
-FILENAME=train
+FILENAME=main_train
 
 JOB_NAME=drought_watch_training_pipeline_$(shell date +'%Y%m%d_%H%M%S')
 

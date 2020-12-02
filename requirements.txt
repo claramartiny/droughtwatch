@@ -24,7 +24,7 @@ mlflow
 s3fs
 
 # utilities
-six
+six==1.13.0
 joblib
 memoized-property
 termcolor
