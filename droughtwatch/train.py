@@ -17,6 +17,7 @@ from tensorflow.keras.applications import EfficientNetB3
 from tensorflow.keras.layers.experimental import preprocessing
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers
+from tensorflow.keras.layers.experimental.preprocessing import Resizing
 
 tf.enable_eager_execution()
 
@@ -234,7 +235,7 @@ if __name__ == "__main__":
     # print(f'The accuracy is of {res[1]*100:.3f}%')
 
     #Build EfficientnetB3 model
-    model = EfficientNetB3(weights='imagenet', drop_connect_rate=0.4)
+    #model = EfficientNetB3(weights='imagenet', drop_connect_rate=0.4)
     IMG_SIZE = 300
     #ds_train, train_labels = parse_tfrecords(train_tfrecords, TOTAL_TRAIN, TOTAL_TRAIN)
     #ds_test, test_labels = parse_tfrecords(val_tfrecords, TOTAL_VAL, TOTAL_VAL)
@@ -245,39 +246,59 @@ if __name__ == "__main__":
     width_shift_range=0.2,
     height_shift_range=0.2,
     horizontal_flip=True)
+
+    datagen2 = tf.keras.preprocessing.image.ImageDataGenerator(
+    featurewise_center=True,
+    featurewise_std_normalization=True,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    horizontal_flip=True)
     # compute quantities required for featurewise normalization
     # (std, mean, and principal components if ZCA whitening is applied)
     datagen.fit(X_trrgb)
-    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
-    img_augmentation = Sequential(
-    [
-    preprocessing.RandomRotation(factor=0.15),
-    preprocessing.RandomTranslation(height_factor=0.1, width_factor=0.1),
-    preprocessing.RandomFlip(),
-    preprocessing.RandomContrast(factor=0.1),
-    ],
-    name="img_augmentation",
-    )
-    x = img_augmentation(inputs)
-    outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
+    datagen2.fit(X_valrgb)
 
-    model = tf.keras.Model(inputs, outputs)
+    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    # img_augmentation = Sequential(
+    # [
+    # preprocessing.RandomRotation(factor=0.15),
+    # preprocessing.RandomTranslation(height_factor=0.1, width_factor=0.1),
+    # preprocessing.RandomFlip(),
+    # preprocessing.RandomContrast(factor=0.1),
+    # ],
+    # name="img_augmentation",
+    # )
+    #x = img_augmentation(inputs)
+    x = inputs
+    #outputs = EfficientNetB3(include_top=True, weights=None, classes=4)(x)
+    
+    x = Resizing(300, 300)(x)
+    activationnetB3 = EfficientNetB3(include_top=False, weights = "imagenet")(x)
+    outputsflatten = layers.Flatten()(activationnetB3)
+    outputsdense1 = layers.Dense(64, activation = "relu")(outputsflatten)
+    outputsdense2 = layers.Dense(4, activation = "softmax")(outputsdense1)
+    model = tf.keras.Model(inputs, outputsdense2)
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
     # fits the model on batches with real-time data augmentation:
     # model.fit(datagen.flow(x_train, y_train, batch_size=32),
     #         steps_per_epoch=len(x_train) / 32, epochs=epochs)
     # here's a more "manual" example
-    for e in range(1000):
-        print('Epoch', e)
-        batches = 0
-        for x_batch, y_batch in datagen.flow(X_trrgb, y_tr, batch_size=16):
-            x_batch = tf.image.resize(x_batch,(300,300))
-            model.fit(x_batch, y_batch, verbose = 1)
-            batches += 1
-            if batches >= len(X_trrgb) / 16:
-                # we need to break the loop by hand because
-                # the generator loops indefinitely
-                break
+    # for e in range(1000):
+    #     print('Epoch', e)
+    #     batches = 0
+    #     for x_batch, y_batch in datagen.flow(X_trrgb, y_tr, batch_size=16):
+    #         x_batch = tf.image.resize(x_batch,(300,300))
+    #         model.fit(x_batch, y_batch, verbose = 1)
+    #         batches += 1
+    #         if batches >= len(X_trrgb) / 16:
+    #             # we need to break the loop by hand because
+    #             # the generator loops indefinitely
+    #             break
+    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    history = model.fit(datagen.flow(X_trrgb, y_tr, batch_size=32),\
+         epochs=1000, validation_data = datagen.flow(X_valrgb, y_val, batch_size = 32), verbose = 1,\
+             callbacks=[es])
     #print("resizing images...")
     # ds_train = tf.image.resize(X_trrgb, (300,300))
     # ds_val = tf.image.resize(X_valrgb, (300,300))
