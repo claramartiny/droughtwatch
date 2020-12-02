@@ -1,4 +1,4 @@
-from params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
+from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
 import os
 import numpy as np
 import tensorflow.compat.v1 as tf
@@ -12,7 +12,7 @@ from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from keras.models import model_from_json
+#from keras.models import model_from_json
 
 features = {
   'B1': tf.io.FixedLenFeature([], tf.string),
@@ -28,6 +28,18 @@ features = {
   'B11': tf.io.FixedLenFeature([], tf.string),
   'label': tf.io.FixedLenFeature([], tf.int64),
 }
+
+# B1  30 meters   0.43 - 0.45 µm  Coastal aerosol
+# B2  30 meters   0.45 - 0.51 µm  Blue
+# B3  30 meters   0.53 - 0.59 µm  Green
+# B4  30 meters   0.64 - 0.67 µm  Red
+# B5  30 meters   0.85 - 0.88 µm  Near infrared
+# B6  30 meters   1.57 - 1.65 µm  Shortwave infrared 1
+# B7  30 meters   2.11 - 2.29 µm  Shortwave infrared 2
+# B8  15 meters   0.52 - 0.90 µm  Band 8 Panchromatic
+# B9  15 meters   1.36 - 1.38 µm  Cirrus
+# B10 30 meters   10.60 - 11.19 µm Thermal infrared 1, resampled from 100m to 30m
+# B11 30 meters   11.50 - 12.51 µm Thermal infrared 2, resampled from 100m to 30m
 
 def get_data(train_data_size, val_data_size):
 
@@ -74,15 +86,16 @@ def get_data(train_data_size, val_data_size):
     dirlist = lambda di: [os.path.join(di, file)\
     for file in os.listdir(di) if 'part-' in file]
 
-    training_files = dirlist('data/train/')
-
-    train = file_list_from_folder("train", "data/")
-    val = file_list_from_folder("val", 'data/')
-
-    train_tfrecords, val_tfrecords = load_data("data/")
+    train_tfrecords, val_tfrecords = load_data("droughtwatch/data/")
 
     X_train, y_train = parse_tfrecords(train_tfrecords, train_data_size, train_data_size)
     X_val, y_val = parse_tfrecords(val_tfrecords, val_data_size, val_data_size)
 
     return X_train, X_val, y_train, y_val
+
+
+    #training_files = dirlist('data/train/')
+
+    #train = file_list_from_folder("train", "data/")
+    #val = file_list_from_folder("val", 'data/')
 
