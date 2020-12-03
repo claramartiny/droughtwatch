@@ -12,8 +12,7 @@ from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from google.cloud import
-import base64
+from google.cloud import storage
 
 #from keras.models import model_from_json
 
@@ -61,15 +60,16 @@ def get_data(train_data_size, val_data_size, local=False):
         if filename.startswith('part-') and not filename.endswith('gstmp'):
             filelist.append(os.path.join(folderpath, filename))
     return filelist
+  
 
-  def load_data_gcp(data_path):
-    os.environ["PROJECT_ID"]="drought-watch-297217"
+  def load_data_gcp():
     client = storage.Client()
     bucket = client.get_bucket(BUCKET_NAME)
-    train = file_list_from_gcp("train", data_path)
-    val = file_list_from_gcp("val", data_path)
+    train = file_list_from_gcp("train", bucket)
+    val = file_list_from_gcp("val", bucket)
+    return train, val
 
-  def file_list_from_gcp(folder, data_path):
+  def file_list_from_gcp(folder, bucket):
     filelist = []
     for filename in list(client.list_blobs(bucket)):
       if str(filename).startswith("<Blob: tfrecords_data, data/"+folder+'/part-'):
@@ -79,14 +79,12 @@ def get_data(train_data_size, val_data_size, local=False):
         filelist.append(name)
     file_obj_list = []
     for items in filelist:
-      blob = bucket.get_blob(items)
+      blob = bucket.get_blob(items) 
       blob = bucket.blob(items)
       blobstring = blob.download_as_string()
       with open("testfile", "wb") as file_obj:
-          #file_obj.write(base64.b64encode(blobstring))
           file_obj_list.append(blob.download_to_file(file_obj))
     return file_obj_list
-
 
 
   def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
@@ -120,8 +118,8 @@ def get_data(train_data_size, val_data_size, local=False):
     train_tfrecords, val_tfrecords = load_data_local(path)
 
   else:
-    path = "gs://{}/{}/".format(BUCKET_NAME, BUCKET_DATA_PATH)
-    train_tfrecords, val_tfrecords = load_data_gcp(path)
+    #path = "gs://{}/{}/".format(BUCKET_NAME, BUCKET_DATA_PATH)
+    train_tfrecords, val_tfrecords = load_data_gcp()
 
   X_train, y_train = parse_tfrecords(train_tfrecords, train_data_size, train_data_size)
   X_val, y_val = parse_tfrecords(val_tfrecords, val_data_size, val_data_size)
