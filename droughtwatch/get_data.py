@@ -12,7 +12,8 @@ from tensorflow.keras import models
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
-from google.cloud import storage
+from google.cloud import
+import base64
 
 #from keras.models import model_from_json
 
@@ -53,21 +54,39 @@ def get_data(train_data_size, val_data_size, local=False):
     val = file_list_from_folder("val", data_path)
     return train, val
 
-    def file_list_from_folder(folder, data_path):
-      folderpath = os.path.join(data_path, folder)
-      filelist = []
-      for filename in os.listdir(folderpath):
-          if filename.startswith('part-') and not filename.endswith('gstmp'):
-              filelist.append(os.path.join(folderpath, filename))
-      return filelist
-  
+  def file_list_from_folder(folder, data_path):
+    folderpath = os.path.join(data_path, folder)
+    filelist = []
+    for filename in os.listdir(folderpath):
+        if filename.startswith('part-') and not filename.endswith('gstmp'):
+            filelist.append(os.path.join(folderpath, filename))
+    return filelist
+
   def load_data_gcp(data_path):
+    os.environ["PROJECT_ID"]="drought-watch-297217"
     client = storage.Client()
     bucket = client.get_bucket(BUCKET_NAME)
-    pass
+    train = file_list_from_gcp("train", data_path)
+    val = file_list_from_gcp("val", data_path)
 
-    def file_list_from_gcp(folder, data_path):
-      pass
+  def file_list_from_gcp(folder, data_path):
+    filelist = []
+    for filename in list(client.list_blobs(bucket)):
+      if str(filename).startswith("<Blob: tfrecords_data, data/"+folder+'/part-'):
+        name = str(filename)
+        name = name[:-19]
+        name = name.replace('<Blob: tfrecords_data, ', '')
+        filelist.append(name)
+    file_obj_list = []
+    for items in filelist:
+      blob = bucket.get_blob(items)
+      blob = bucket.blob(items)
+      blobstring = blob.download_as_string()
+      with open("testfile", "wb") as file_obj:
+          #file_obj.write(base64.b64encode(blobstring))
+          file_obj_list.append(blob.download_to_file(file_obj))
+    return file_obj_list
+
 
 
   def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
