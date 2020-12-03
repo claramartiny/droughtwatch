@@ -56,6 +56,7 @@ def load_data_gcp():
 
 def file_list_from_gcp(folder, bucket):
     filelist = []
+    os.mkdir(f'data/{folder}')
     client = storage.Client()
     for filename in list(client.list_blobs(bucket)):
       if str(filename).startswith("<Blob: tfrecords_data, data/"+folder+'/part-'):
@@ -98,8 +99,9 @@ def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
     image, label = tfrecord_iterator.get_next()
     return image, label
 
-client = storage.Client()
-bucket = client.get_bucket(BUCKET_NAME)
+os.mkdir('test_folder/test_folder2')
+#client = storage.Client()
+#bucket = client.get_bucket(BUCKET_NAME)
 #train = file_list_from_gcp("train", bucket)
 #val = file_list_from_gcp("val", bucket)
 

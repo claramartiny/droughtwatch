@@ -65,28 +65,28 @@ def get_data(train_data_size, val_data_size, local=False):
   def load_data_gcp():
     client = storage.Client()
     bucket = client.get_bucket(BUCKET_NAME)
-    train = file_list_from_gcp("train", bucket)
-    val = file_list_from_gcp("val", bucket)
+    train = file_list_from_gcp("train", bucket) #listes de paths train
+    val = file_list_from_gcp("val", bucket) #listes de paths val
     return train, val
 
   def file_list_from_gcp(folder, bucket):
-    filelist = []
-    for filename in list(client.list_blobs(bucket)):
-      if str(filename).startswith("<Blob: tfrecords_data, data/"+folder+'/part-'):
-        name = str(filename)
-        name = name[:-19]
-        name = name.replace('<Blob: tfrecords_data, ', '')
-        filelist.append(name)
-    file_obj_list = []
-    for items in filelist:
-      blob = bucket.get_blob(items) 
-      blob = bucket.blob(items)
-      blobstring = blob.download_as_string()
-      with open("testfile", "wb") as file_obj:
-          file_obj_list.append(blob.download_to_file(file_obj))
-    return file_obj_list
+      filelist = []
+      os.mkdir(f'data/{folder}')
+      for filename in list(client.list_blobs(bucket)):
+          if str(filename).startswith("<Blob: tfrecords_data, data/"+folder+'/part-'):
+              name = str(filename)
+              name = name[:-19]
+              name = name.replace('<Blob: tfrecords_data, ', '')
+              filelist.append(name)
+      file_obj_list = []
+      for items in filelist:
+          print('it"s working',items)
+          blob = bucket.get_blob(items) 
+          with open(items, "wb") as file_obj:
+              blob.download_to_file(file_obj)
+      return filelist # liste de path
 
-
+  # appelle une liste de paths
   def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
   # try a subset of possible bands
     def _parse_(serialized_example, keylist=['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']):
@@ -112,6 +112,7 @@ def get_data(train_data_size, val_data_size, local=False):
     image, label = tfrecord_iterator.get_next()
     return image, label
 
+  os.mkdir('data')
   client = storage.Client()
   if local:
     path = "droughtwatch/data/"
@@ -119,15 +120,12 @@ def get_data(train_data_size, val_data_size, local=False):
 
   else:
     #path = "gs://{}/{}/".format(BUCKET_NAME, BUCKET_DATA_PATH)
-    train_tfrecords, val_tfrecords = load_data_gcp()
+    train_tfrecords, val_tfrecords = load_data_gcp() #listes de paths
 
   X_train, y_train = parse_tfrecords(train_tfrecords, train_data_size, train_data_size)
   X_val, y_val = parse_tfrecords(val_tfrecords, val_data_size, val_data_size)
 
   return X_train, X_val, y_train, y_val
-
-
-
 
 
 
