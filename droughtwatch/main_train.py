@@ -162,7 +162,7 @@ def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
 
 if __name__ == "__main__":
     print(colored("############  loading data ############", "blue"))
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = False)
+    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
     print(colored(f"############  data is loaded ############", "green"))
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     k = int(0.8 * SIZE_TRAIN)
@@ -179,6 +179,10 @@ if __name__ == "__main__":
     X_test = X_val_total["image"]
     y_test = y_val_total
     print(colored(f"############  Hold-Out OK ############", "green"))
+  
+    print(colored("############  Deleting unused variables ############", "blue"))
+    del X_train,y_train,X_val_total,y_val_total
+    print(colored(f"############  Deleted unused variables ############", "green"))
     #Clean data 
     print(colored("############  Cleaning Data ############", "blue"))
     X_tr,y_tr = clean_data(X_tr,y_tr)
@@ -243,8 +247,7 @@ if __name__ == "__main__":
 #Step 3 : Split X_train, X_test, y_train, y_test
 #Step 4 :
 
-## Class Trainer
-
+ 
 #Step 1 : setup MLFLOW
 #Step 2 : get pipeline
 
