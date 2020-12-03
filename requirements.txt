@@ -33,6 +33,4 @@ termcolor
 wandb
 tensorflow==2.3.0
 ee
-google-cloud-storage
-gcsfs
 keras
