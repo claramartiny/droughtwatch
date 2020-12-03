@@ -105,7 +105,7 @@ def efficientnet_model():
 
 def train_efficient_net(X_train, X_val, y_train, y_val):
     # We only need B2,B3 and B4
-    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    es = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
