@@ -60,7 +60,7 @@ def get_data(train_data_size, val_data_size, local=False):
         if filename.startswith('part-') and not filename.endswith('gstmp'):
             filelist.append(os.path.join(folderpath, filename))
     return filelist
-  
+
 
   def load_data_gcp():
     client = storage.Client()
@@ -81,7 +81,7 @@ def get_data(train_data_size, val_data_size, local=False):
       file_obj_list = []
       for items in filelist:
           print('it"s working',items)
-          blob = bucket.get_blob(items) 
+          blob = bucket.get_blob(items)
           with open(items, "wb") as file_obj:
               blob.download_to_file(file_obj)
       return filelist # liste de path
@@ -89,7 +89,7 @@ def get_data(train_data_size, val_data_size, local=False):
   # appelle une liste de paths
   def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
   # try a subset of possible bands
-    def _parse_(serialized_example, keylist=['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']):
+    def _parse_(serialized_example, keylist=['B1', 'B4', 'B3', 'B2', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11']):
         example = tf.io.parse_single_example(serialized_example, features)
 
         def getband(example_key):
@@ -112,13 +112,14 @@ def get_data(train_data_size, val_data_size, local=False):
     image, label = tfrecord_iterator.get_next()
     return image, label
 
-  os.mkdir('data')
-  client = storage.Client()
+
   if local:
     path = "droughtwatch/data/"
     train_tfrecords, val_tfrecords = load_data_local(path)
 
   else:
+    os.mkdir('data')
+    client = storage.Client()
     #path = "gs://{}/{}/".format(BUCKET_NAME, BUCKET_DATA_PATH)
     train_tfrecords, val_tfrecords = load_data_gcp() #listes de paths
 

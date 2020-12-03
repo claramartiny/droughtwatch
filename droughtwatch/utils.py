@@ -13,7 +13,7 @@ def dataset_select_channels(train_images,list_of_channels):
     return data[:,:,:,channels_index]
 
 ##################################
-#  DECORATOR TO ADD IN utils.py  
+#  DECORATOR TO ADD IN utils.py
 #################################
 def simple_time_tracker(method):
     def timed(*args, **kw):
@@ -29,7 +29,7 @@ def simple_time_tracker(method):
     return timed
 
 
-# To add in other files 
+# To add in other files
 
 # from mypackage.utils import simple_time_tracker
 # @simple_time_tracker

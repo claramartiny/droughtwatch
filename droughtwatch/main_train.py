@@ -63,30 +63,30 @@ def train_baseline(X_train, X_val, y_train, y_val):
     # We only need B2,B3 and B4
     model = baseline_model()
     es = EarlyStopping(monitor='val_accuracy', patience=20, verbose=1, restore_best_weights=True)
-    
+
     model.fit(X_train, y_train,
-            batch_size=32, 
+            batch_size=32,
             epochs=1,
-            validation_data=(X_val, y_val), 
+            validation_data=(X_val, y_val),
             callbacks=[es],
             verbose=1)
     return model
 
 
-#model 2: VGG16 model 
+#model 2: VGG16 model
 ##------------------------------------------------------------------------------------------------
 ### Convert images to RGB format first using dataset_select_channels ###
 
 def vgg16_model():
     model = VGG16(weights="imagenet", include_top=False, input_shape=X_trrgb[0].shape)
-    
+
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
     return model
 
 
-#model 3: EfficientNetB3 model 
+#model 3: EfficientNetB3 model
 ##------------------------------------------------------------------------------------------------
 def efficientnet_model():
     ''' Modèle efficientnet B3'''
@@ -106,19 +106,19 @@ def efficientnet_model():
 def train_efficient_net(X_train, X_val, y_train, y_val):
     # We only need B2,B3 and B4
     es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
-    
+
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen.fit(X_train)
     datagen2.fit(X_val)
 
     history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
-                        epochs=10, 
-                        validation_data = datagen2.flow(X_val, y_val, batch_size = 32), 
+                        epochs=10,
+                        validation_data = datagen2.flow(X_val, y_val, batch_size = 32),
                         verbose = 1,
                         callbacks=[es])
 
-    return history  
+    return history
 
 def save_model(model, upload=True, auto_remove=True):
     """Save the model into 2 versions: a .json and .h5 and upload them on Google Storage /models folder"""
@@ -177,9 +177,9 @@ def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
 
 if __name__ == "__main__":
     print(colored("############  loading data ############", "blue"))
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = False)
+    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
     print(colored(f"############  data is loaded ############", "green"))
-    
+
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
     k = int(2/3 * SIZE_TRAIN)
     print(colored("############  Proceding to Hold-Out ############", "blue"))
@@ -190,19 +190,19 @@ if __name__ == "__main__":
     X_test = X_val_total["image"]
     y_test = y_val_total
     print(colored(f"############  Hold-Out OK ############", "green"))
-  
+
     print(colored("############  Deleting unused variables ############", "blue"))
     del X_train,y_train,X_val_total,y_val_total
     print(colored(f"############  Deleted unused variables ############", "green"))
-    
-    #Clean data 
+
+    #Clean data
     print(colored("############  Cleaning Data ############", "blue"))
     X_tr,y_tr = clean_data(X_tr,y_tr)
     X_val,y_val = clean_data(X_val,y_val)
     X_test,y_test = clean_data(X_test,y_test)
     print(colored(f"############  Data-Cleaned ############", "green"))
-    
-    # Select features 
+
+    # Select features
     #list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
     list_of_channels = ['B4', 'B3', 'B2'] # Modify this for each model
     print(colored("############  Selecting color channels for this model ############", "blue"))
@@ -210,10 +210,10 @@ if __name__ == "__main__":
     X_val = dataset_select_channels(X_val,list_of_channels)
     X_test = dataset_select_channels(X_test,list_of_channels)
     print(colored(f"############ channels selection done ############", "green"))
-    
+
     # Model to run:
     #----- Instanciate model ------
-    model = efficientnet_model() #Modify 
+    model = efficientnet_model() #Modify
 
     #----- Train model ------
     print(colored("############  Training Model ############", "blue"))
@@ -221,11 +221,11 @@ if __name__ == "__main__":
     print(colored(f"############  Model Trained ############", "green"))
 
     #----- Exporting history.csv ------
-    print(colored("############  Exporting history as CSV ############", "blue")) 
+    print(colored("############  Exporting history as CSV ############", "blue"))
     adict = {}
     adict["accuracy"]=history.history["accuracy"]
     adict["val_accuracy"]=history.history["val_accuracy"]
-    
+
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
     X_test = Resizing(300, 300)(X_test)
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     df = pd.DataFrame(adict)
     df.to_csv("historyandtest_accuracy.csv")
     print(df)
-    print(colored("############ history.csv exported ############", "blue")) 
+    print(colored("############ history.csv exported ############", "blue"))
 
     #----- Save model ------
     print(colored("############   Saving model    ############", "blue"))
@@ -261,7 +261,7 @@ if __name__ == "__main__":
 #Step 3 : Split X_train, X_test, y_train, y_test
 #Step 4 :
 
- 
+
 #Step 1 : setup MLFLOW
 #Step 2 : get pipeline
 
