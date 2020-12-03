@@ -174,7 +174,7 @@ def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
 
 if __name__ == "__main__":
     print(colored("############  loading data ############", "blue"))
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
+    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = False)
     print(colored(f"############  data is loaded ############", "green"))
     
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
