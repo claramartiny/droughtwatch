@@ -48,51 +48,61 @@ BUCKET_DATA_PATH = 'data'
 
 def get_data(train_data_size, val_data_size, local=False):
 
-  def load_data(data_path):
-      train = file_list_from_folder("train", data_path)
-      val = file_list_from_folder("val", data_path)
-      return train, val
+  def load_data_local(data_path):
+    train = file_list_from_folder("train", data_path)
+    val = file_list_from_folder("val", data_path)
+    return train, val
 
-  def file_list_from_folder(folder, data_path):
+    def file_list_from_folder(folder, data_path):
       folderpath = os.path.join(data_path, folder)
       filelist = []
       for filename in os.listdir(folderpath):
           if filename.startswith('part-') and not filename.endswith('gstmp'):
               filelist.append(os.path.join(folderpath, filename))
       return filelist
+  
+  def load_data_gcp(data_path):
+    client = storage.Client()
+    bucket = client.get_bucket(BUCKET_NAME)
+    pass
+
+    def file_list_from_gcp(folder, data_path):
+      pass
+
 
   def parse_tfrecords(filelist, batch_size, buffer_size, include_viz=False):
   # try a subset of possible bands
-      def _parse_(serialized_example, keylist=['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']):
-          example = tf.io.parse_single_example(serialized_example, features)
+    def _parse_(serialized_example, keylist=['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8']):
+        example = tf.io.parse_single_example(serialized_example, features)
 
-          def getband(example_key):
-              img = tf.io.decode_raw(example_key, tf.uint8)
-              return tf.reshape(img[:IMG_DIM**2], shape=(IMG_DIM, IMG_DIM, 1))
+        def getband(example_key):
+            img = tf.io.decode_raw(example_key, tf.uint8)
+            return tf.reshape(img[:IMG_DIM**2], shape=(IMG_DIM, IMG_DIM, 1))
 
-          bandlist = [getband(example[key]) for key in keylist]
-          # combine bands into tensor
-          image = tf.concat(bandlist, -1)
+        bandlist = [getband(example[key]) for key in keylist]
+        # combine bands into tensor
+        image = tf.concat(bandlist, -1)
 
-          # one-hot encode ground truth labels
-          label = tf.cast(example['label'], tf.int32)
-          label = tf.one_hot(label, NUM_CLASSES)
+        # one-hot encode ground truth labels
+        label = tf.cast(example['label'], tf.int32)
+        label = tf.one_hot(label, NUM_CLASSES)
 
-          return {'image': image}, label
+        return {'image': image}, label
 
-      tfrecord_dataset = tf.data.TFRecordDataset(filelist)
-      tfrecord_dataset = tfrecord_dataset.map(lambda x:_parse_(x)).shuffle(buffer_size).repeat(-1).batch(batch_size)
-      tfrecord_iterator = tfrecord_dataset.make_one_shot_iterator()
-      image, label = tfrecord_iterator.get_next()
-      return image, label
+    tfrecord_dataset = tf.data.TFRecordDataset(filelist)
+    tfrecord_dataset = tfrecord_dataset.map(lambda x:_parse_(x)).shuffle(buffer_size).repeat(-1).batch(batch_size)
+    tfrecord_iterator = tfrecord_dataset.make_one_shot_iterator()
+    image, label = tfrecord_iterator.get_next()
+    return image, label
 
   client = storage.Client()
   if local:
     path = "droughtwatch/data/"
+    train_tfrecords, val_tfrecords = load_data_local(path)
+
   else:
     path = "gs://{}/{}/".format(BUCKET_NAME, BUCKET_DATA_PATH)
-
-  train_tfrecords, val_tfrecords = load_data(path)
+    train_tfrecords, val_tfrecords = load_data_gcp(path)
 
   X_train, y_train = parse_tfrecords(train_tfrecords, train_data_size, train_data_size)
   X_val, y_val = parse_tfrecords(val_tfrecords, val_data_size, val_data_size)

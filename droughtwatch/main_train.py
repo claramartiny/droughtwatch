@@ -59,6 +59,19 @@ def baseline_model():
               metrics=['accuracy'])
     return model
 
+def train_baseline(X_train, X_val, y_train, y_val):
+    # We only need B2,B3 and B4
+    model = baseline_model()
+    es = EarlyStopping(monitor='val_accuracy', patience=20, verbose=1, restore_best_weights=True)
+    
+    model.fit(X_train, y_train,
+            batch_size=32, 
+            epochs=1,
+            validation_data=(X_val, y_val), 
+            callbacks=[es],
+            verbose=1)
+    return model
+
 
 #model 2: VGG16 model 
 ##------------------------------------------------------------------------------------------------
@@ -91,7 +104,6 @@ def efficientnet_model():
     return model
 
 def train_efficient_net(X_train, X_val, y_train, y_val):
-    #----- Train model ------
     # We only need B2,B3 and B4
     es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
@@ -164,13 +176,9 @@ if __name__ == "__main__":
     print(colored("############  loading data ############", "blue"))
     X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
     print(colored(f"############  data is loaded ############", "green"))
+    
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    k = int(0.8 * SIZE_TRAIN)
-    # X_train = X_train["image"][:k]
-    # X_val = X_val_total["image"][:k]
-    # y_val = y_val_total[:k]
-    # X_test = X_val_total["image"][k:]
-    # y_test = y_val_total[k:]
+    k = int(2/3 * SIZE_TRAIN)
     print(colored("############  Proceding to Hold-Out ############", "blue"))
     X_tr = X_train["image"][:k]
     y_tr = y_train[:k]
@@ -183,24 +191,26 @@ if __name__ == "__main__":
     print(colored("############  Deleting unused variables ############", "blue"))
     del X_train,y_train,X_val_total,y_val_total
     print(colored(f"############  Deleted unused variables ############", "green"))
+    
     #Clean data 
     print(colored("############  Cleaning Data ############", "blue"))
     X_tr,y_tr = clean_data(X_tr,y_tr)
     X_val,y_val = clean_data(X_val,y_val)
     X_test,y_test = clean_data(X_test,y_test)
     print(colored(f"############  Data-Cleaned ############", "green"))
+    
     # Select features 
     #list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
-    #LIST OF CHANNELS FOR EFFICIENTNETB3 MODEL
-    list_of_channels = ['B4', 'B3', 'B2']
-    print(colored("############  Selecting RGB color channels ############", "blue"))
+    list_of_channels = ['B4', 'B3', 'B2'] # Modify this for each model
+    print(colored("############  Selecting color channels for this model ############", "blue"))
     X_tr = dataset_select_channels(X_tr,list_of_channels)
     X_val = dataset_select_channels(X_val,list_of_channels)
     X_test = dataset_select_channels(X_test,list_of_channels)
-    print(colored(f"############  RGB channel selection done ############", "green"))
+    print(colored(f"############ channels selection done ############", "green"))
+    
     # Model to run:
     #----- Instanciate model ------
-    model = efficientnet_model()
+    model = efficientnet_model() #Modify 
 
     #----- Train model ------
     print(colored("############  Training Model ############", "blue"))
