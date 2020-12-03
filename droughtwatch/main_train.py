@@ -212,21 +212,22 @@ if __name__ == "__main__":
     adict = {}
     adict["accuracy"]=history.history["accuracy"]
     adict["val_accuracy"]=history.history["val_accuracy"]
-    df = pd.DataFrame(adict)
-    df.to_csv("history.csv")
-    print(df)
-    print(colored("############ history.csv exported ############", "blue")) 
-
+    
     #----- Evaluate model ------
     print(colored("############  Evaluating model ############", "blue"))
     X_test = Resizing(300, 300)(X_test)
     results = model.evaluate(X_test,y_test,verbose=1)
     print(f'Accuracy:{results[1]}')
-    
-    #----- Save model ------
-    print(colored("############   Saving model    ############", "green"))
-    save_model(model)
+    adict["test_accuracy"]= results[1]
+    df = pd.DataFrame(adict)
+    df.to_csv("historyandtest_accuracy.csv")
+    print(df)
+    print(colored("############ history.csv exported ############", "blue")) 
 
+    #----- Save model ------
+    print(colored("############   Saving model    ############", "blue"))
+    save_model(model)
+    print(colored("############   Model Saved    ############", "green"))
 
 
 
