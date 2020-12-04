@@ -85,22 +85,32 @@ def train_baseline(X_train, X_val, y_train, y_val):
 ##------------------------------------------------------------------------------------------------
 def efficientnet_model():
     ''' Modèle efficientnet B3'''
-
     sys.setrecursionlimit(sys.getrecursionlimit() * 1500)
     
     IMG_SIZE = 300
 
     inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
-    x = inputs
-    x = Resizing(300, 300)(x)
-    activationnetB3 = EfficientNetB3(include_top=False, weights = "imagenet")(x)
-    outputsflatten = layers.Flatten()(activationnetB3)
-    outputsdense1 = layers.Dense(64, activation = "relu")(outputsflatten)
-    outputsdense2 = layers.Dense(64, activation = "relu")(outputsdense1)
-    outputsdense3 = layers.Dense(4, activation = "softmax")(outputsdense2)
-    model = tf.keras.Model(inputs, outputsdense3)
+    x = Resizing(300, 300, interpolation="bilinear")(inputs)
+    model = EfficientNetB3(include_top=False, input_tensor=x, weights="imagenet")
 
-    model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+    # Freeze the pretrained weights
+    model.trainable = False
+
+    # Rebuild top
+    x = layers.GlobalAveragePooling2D(name="avg_pool")(model.output)
+    x = layers.BatchNormalization()(x)
+
+    top_dropout_rate = 0.2
+    x = layers.Dropout(top_dropout_rate, name="top_dropout")(x)
+    outputs = layers.Dense(4, activation="softmax", name="pred")(x)
+
+    # Compile
+    model = tf.keras.Model(inputs, outputs, name="EfficientNet")
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
+    model.compile(
+        optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"]
+    )
+
     return model
 
 def train_efficient_net(X_train, X_val, y_train, y_val):
@@ -108,22 +118,15 @@ def train_efficient_net(X_train, X_val, y_train, y_val):
     es = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
-    #datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen.fit(X_train)
-    #datagen2.fit(X_val)
-
-    # history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
-    #                     epochs=1000,
-    #                     validation_data = datagen2.flow(X_val, y_val, batch_size = 32),
-    #                     verbose = 1,
-    #                     callbacks=[es])
+ 
+    X_val = Resizing(300, 300, interpolation="bilinear")(X_val)
 
     history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
-                        epochs=1000,
+                       epochs=1000,
                         validation_data = (X_val, y_val),
                         verbose = 1,
                         callbacks=[es])
-
     return history
 
 def save_model(model, upload=True, auto_remove=True):
