@@ -5,6 +5,7 @@ import tensorflow.compat.v1 as tf
 import argparse
 import math
 import numpy as np
+import sys
 from tensorflow.keras import optimizers
 from tensorflow.keras import layers, initializers
 from tensorflow.keras import models
@@ -26,7 +27,7 @@ from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL
 
 BUCKET_NAME = 'tfrecords_data'
 MODEL_NAME = 'efficientnet_model'
-MODEL_VERSION = 'v1_CM'
+MODEL_VERSION = 'v1_LG_size0.5'
 
 
 tf.enable_eager_execution()
@@ -77,20 +78,18 @@ def train_baseline(X_train, X_val, y_train, y_val):
 ##------------------------------------------------------------------------------------------------
 ### Convert images to RGB format first using dataset_select_channels ###
 
-def vgg16_model():
-    model = VGG16(weights="imagenet", include_top=False, input_shape=X_trrgb[0].shape)
-
-    model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
-    return model
+ 
 
 
 #model 3: EfficientNetB3 model
 ##------------------------------------------------------------------------------------------------
 def efficientnet_model():
     ''' Modèle efficientnet B3'''
+
+    sys.setrecursionlimit(sys.getrecursionlimit() * 1500)
+    
     IMG_SIZE = 300
+
     inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
     x = inputs
     x = Resizing(300, 300)(x)
@@ -100,21 +99,28 @@ def efficientnet_model():
     outputsdense2 = layers.Dense(64, activation = "relu")(outputsdense1)
     outputsdense3 = layers.Dense(4, activation = "softmax")(outputsdense2)
     model = tf.keras.Model(inputs, outputsdense3)
+
     model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
     return model
 
 def train_efficient_net(X_train, X_val, y_train, y_val):
     # We only need B2,B3 and B4
-    es = EarlyStopping(monitor='val_accuracy', mode='max', patience=20, verbose=1, restore_best_weights=True)
+    es = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
-    datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
+    #datagen2 = tf.keras.preprocessing.image.ImageDataGenerator()
     datagen.fit(X_train)
-    datagen2.fit(X_val)
+    #datagen2.fit(X_val)
+
+    # history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
+    #                     epochs=1000,
+    #                     validation_data = datagen2.flow(X_val, y_val, batch_size = 32),
+    #                     verbose = 1,
+    #                     callbacks=[es])
 
     history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
-                        epochs=10,
-                        validation_data = datagen2.flow(X_val, y_val, batch_size = 32),
+                        epochs=1000,
+                        validation_data = (X_val, y_val),
                         verbose = 1,
                         callbacks=[es])
 
@@ -181,14 +187,20 @@ if __name__ == "__main__":
     print(colored(f"############  data is loaded ############", "green"))
 
     #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    k = int(2/3 * SIZE_TRAIN)
+    print("SIZE_TRAIN:"+str(SIZE_TRAIN))
+    k = int((2/3) * SIZE_TRAIN)
+    print(k)
     print(colored("############  Proceding to Hold-Out ############", "blue"))
     X_tr = X_train["image"][:k]
     y_tr = y_train[:k]
+    print(X_tr.shape)
+    print(y_tr.shape)
     X_val = X_train["image"][k:]
     y_val = y_train[k:]
     X_test = X_val_total["image"]
     y_test = y_val_total
+    print(X_val.shape)
+    print(y_val.shape)
     print(colored(f"############  Hold-Out OK ############", "green"))
 
     print(colored("############  Deleting unused variables ############", "blue"))
