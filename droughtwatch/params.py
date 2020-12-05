@@ -6,7 +6,7 @@ TOTAL_VAL = 10778
 # Sample size of dataset for training purpose
 SIZE= 0.1 # modify this only
 SIZE_TRAIN = int(TOTAL_TRAIN*SIZE)
-SIZE_VAL = int(TOTAL_VAL*SIZE)
+SIZE_VAL = int(TOTAL_VAL)
 
 # Parameters of the data (do not change)
 IMG_DIM = 65

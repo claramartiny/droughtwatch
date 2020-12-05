@@ -78,7 +78,7 @@ def get_data(train_data_size, val_data_size, local=False):
               name = name[:-19]
               name = name.replace('<Blob: tfrecords_data, ', '')
               filelist.append(name)
-      file_obj_list = []
+      print(len(filelist))
       for items in filelist:
           print('it"s working',items)
           blob = bucket.get_blob(items)

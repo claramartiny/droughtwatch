@@ -34,3 +34,5 @@ wandb
 tensorflow==2.3.0
 ee
 keras
+
+cloud_tpu_client
