@@ -106,7 +106,21 @@ if upload_file is not None:
     X_test = get_X_test_all_bands(parsed_examples[0])
     X_test = X_test.reshape(1,65,65,11)
     y_pred = loaded_model.predict(X_test)
-    st.text(y_pred)
+
+    st.sidebar.header('Drought Prediction')
+    st.sidebar.write(":sunglasses: :satellite:")
+    st.sidebar.text(y_pred)
+    # probability = "{:.3f}".format(float(prediction*100))
+    if y_pred[0] == max(y_pred):
+        st.sidebar.text("This satelite image is classified as 0; There is a drought in the region")
+    elif y_pred[1] == max(y_pred):
+        st.sidebar.text("This satelite image is classified as 1; The region is close to encounter a drought, feeds ~ 1 cow")
+    elif y_pred[2] == max(y_pred):
+        st.sidebar.text("This satelite image is classified as 2; There is no droughts in the region although it can feed ~ 2 cows")
+    else:
+        st.sidebar.text("This satelite image is classified as 3; It is most likely that there is no droughts in the region, it can feed +3 cows")
+
+
 
 #     output = loaded_model.predict(parsed_examples)
 #     boxes, scores = post_process(output)
