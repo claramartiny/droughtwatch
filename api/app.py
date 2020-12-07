@@ -17,7 +17,19 @@ if upload_file is not None:
     imageLocation.image(img, use_column_width = True)
 
     img = T.ToTensor()(img)
-    model = torch.load('droughtwatch/models/VGG16_B753_Acc74/VGG16model.h5', map_location = 'cpu')
+    # load json and create model
+    json_file = open('../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/\
+        baseline_improved_Acc76_70K_v3_TS.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    loaded_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    loaded_model.load_weights('../droughtwatch/models/\
+        Baseline_model_Acc76_lr_00005_100k_B1toB11model/baseline_improved_Acc76_70K_v3_TS.h5')
+    # print("Loaded model from disk")
+
+    # evaluate loaded model on test data
+    model = loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     model.eval()
     output = get_prediction(model, img)
     boxes, scores = post_process(output)
