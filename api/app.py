@@ -3,7 +3,6 @@ import streamlit as st
 from PIL import Image
 from keras.models import model_from_json
 import torch
-from earthengine.plot_ee_images import parse_visual, get_rgb_img_to_plot, get_X_test_all_bands
 import os
 import tensorflow.compat.v1 as tf
 import numpy as np
@@ -37,7 +36,7 @@ def parse_visual(data):
     return parsed_examples
 def get_img_from_example(parsed_example, intensify=True):
     rgbArray = np.zeros((65,65,3), 'int64')
-    for i, band in enumerate(['B5', 'B3', 'B2']):
+    for i, band in enumerate(['B4', 'B3', 'B2']):
         band_data = parsed_example[band].numpy()
         if intensify:
             band_data = band_data/np.max(band_data)*255
@@ -45,6 +44,19 @@ def get_img_from_example(parsed_example, intensify=True):
             band_data = band_data*255
         rgbArray[..., i] = band_data
     return rgbArray
+
+def get_X_test_all_bands(parsed_example, intensify=True):
+    '''function to convert a parsed_example file into a 11-band-array that can be used in our models'''
+    elevenArray = np.zeros((65,65,11), 'int64')
+    for i, band in enumerate(['B1','B4', 'B3', 'B2','B5','B6','B7','B8','B9','B10','B11']):
+        band_data = parsed_example[band].numpy()
+        if intensify:
+            band_data = band_data/np.max(band_data)*255
+        else:
+            band_data = band_data*255
+        elevenArray[..., i] = band_data
+    return elevenArray
+
 
 # --------------------------------------------------------------------------
 #                              STREAMLIT CODE
@@ -71,6 +83,7 @@ if upload_file is not None:
     img= get_img_from_example(parsed_examples[0])
     imageLocation = st.empty()
     imageLocation.image(img, use_column_width = True)
+
 # ----------------------------------
 #      Load Model
 # ----------------------------------
@@ -84,24 +97,29 @@ if upload_file is not None:
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
     loaded_model.load_weights(head + '/droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.h5')
+
     loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # ----------------------------------
 #      Prediction
 # ----------------------------------
+    X_test = get_X_test_all_bands(parsed_examples[0])
+    X_test = X_test.reshape(1,65,65,11)
+    y_pred = loaded_model.predict(X_test)
+    st.text(y_pred)
 
-    output = loaded_model.predict(parsed_examples)
-    boxes, scores = post_process(output)
-    img = plot_op(img, boxes, scores)
-    imageLocation.image(img, use_column_width= True)
+#     output = loaded_model.predict(parsed_examples)
+#     boxes, scores = post_process(output)
+#     img = plot_op(img, boxes, scores)
+#     imageLocation.image(img, use_column_width= True)
 
 
-    #slider or input box
-    #nms = st.sidebar.slider('nms', 0.0,1.0, 0.1)
-    #boxes, scores = post_process(output, nms_thres= nms)
+#     #slider or input box
+#     #nms = st.sidebar.slider('nms', 0.0,1.0, 0.1)
+#     #boxes, scores = post_process(output, nms_thres= nms)
 
-# @st.cache
-# def post_process(outputs, nms_thres=0.3):
-#     boxes = outputs['boxes'].data
+# # @st.cache
+# # def post_process(outputs, nms_thres=0.3):
+# #     boxes = outputs['boxes'].data
 
 
