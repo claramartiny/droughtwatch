@@ -3,42 +3,97 @@ import streamlit as st
 from PIL import Image
 from keras.models import model_from_json
 import torch
+from earthengine.plot_ee_images import parse_visual, get_rgb_img_to_plot, get_X_test_all_bands
+import os
+import tensorflow.compat.v1 as tf
+import numpy as np
+import argparse
+import math
+
+# ----------------------------------
+#      !Functions!
+# ----------------------------------
+def parse_visual(data):
+    dataset = tf.data.TFRecordDataset(data)
+    # pattern for one part file
+    # dataset = tf.data.TFRecordDataset('part-r-00099')
+    iterator = dataset.make_one_shot_iterator()
+
+    features = {
+        'B1': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B2': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B3': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B4': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B5': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B6': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B7': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B8': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B9': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B10': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True),
+        'B11': tf.FixedLenSequenceFeature([65], tf.int64,allow_missing=True)
+    }
+
+    parsed_examples = [tf.parse_single_example(data, features) for data in iterator]
+    return parsed_examples
+def get_img_from_example(parsed_example, intensify=True):
+    rgbArray = np.zeros((65,65,3), 'int64')
+    for i, band in enumerate(['B5', 'B3', 'B2']):
+        band_data = parsed_example[band].numpy()
+        if intensify:
+            band_data = band_data/np.max(band_data)*255
+        else:
+            band_data = band_data*255
+        rgbArray[..., i] = band_data
+    return rgbArray
+
+# --------------------------------------------------------------------------
+#                              STREAMLIT CODE
+# --------------------------------------------------------------------------
 
 # Display text on a browser
 st.title("Drought Watch")
 st.header("Drought detection using satelite images")
-st.text("Upload a satelite Image for image classification as drought detection:")
+st.text("Upload a satelite tfrecord for image classification of drought detection:")
 
-#CODE to upload a file
-upload_file = st.file_uploader("Choose an image file", type = ["tfrecord"])
+# Upload a TFrecord file
+upload_file = st.file_uploader("Choose a satelite TFrecord file", type = ["tfrecord"])
 
 if upload_file is not None:
-    img = upload_file.read()
-    bytes_data = img.read()
+    #transform tfrecord to byte
+    bytes_data = upload_file.read()
     type(bytes_data)
     ba = bytearray(bytes_data)
     with open("img.tfrecord","wb") as file:
         file.write(ba)
-  
-    #imageLocation = st.empty()
-    #imageLocation.image(img, use_column_width = True)
-    
-    img = img.numpy()
-    # load json and create model
-    json_file = open('../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.json', 'r')
+    #parse the bytes
+    parsed_examples = parse_visual("img.tfrecord")
+    #visualise the satelite image
+    img= get_img_from_example(parsed_examples[0])
+    imageLocation = st.empty()
+    imageLocation.image(img, use_column_width = True)
+# ----------------------------------
+#      Load Model
+# ----------------------------------
+    #Load JSON
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    head, tail = os.path.split(ROOT_DIR)
+    print(ROOT_DIR)
+    json_file = open(head + '/droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
-    loaded_model.load_weights("../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.h5")
-    print("Loaded model from disk")
-
-    # evaluate loaded model on test data
+    loaded_model.load_weights(head + '/droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.h5')
     loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    output = loaded_model.predict(img)
-    #boxes, scores = post_process(output)
-    #img = plot_op(img, boxes, scores)
-    #imageLocation.image(img, use_column_width= True)
+
+# ----------------------------------
+#      Prediction
+# ----------------------------------
+
+    output = loaded_model.predict(parsed_examples)
+    boxes, scores = post_process(output)
+    img = plot_op(img, boxes, scores)
+    imageLocation.image(img, use_column_width= True)
 
 
     #slider or input box
@@ -49,38 +104,4 @@ if upload_file is not None:
 # def post_process(outputs, nms_thres=0.3):
 #     boxes = outputs['boxes'].data
 
-
-
-# import cv2
-# from PIL import Image, ImageOps
-# import numpy as np
-# def import_and_predict(image_data, model):
-
-#         size = (150,150)
-#         image = ImageOps.fit(image_data, size, Image.ANTIALIAS)
-#         image = np.asarray(image)
-#         img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-#         img_resize = (cv2.resize(img, dsize=(75, 75),    interpolation=cv2.INTER_CUBIC))/255.
-
-#         img_reshape = img_resize[np.newaxis,...]
-
-#         prediction = model.predict(img_reshape)
-
-#         return prediction
-# if file is None:
-#     st.text("Please upload an image file")
-# else:
-#     image = Image.open(file)
-#     st.image(image, use_column_width=True)
-#     prediction = import_and_predict(image, model)
-
-#     if np.argmax(prediction) == 0:
-#         st.write("It is a paper!")
-#     elif np.argmax(prediction) == 1:
-#         st.write("It is a rock!")
-#     else:
-#         st.write("It is a scissor!")
-
-#     st.text("Probability (0: Drought, 1: Rock, 2: Scissor")
-#     st.write(prediction)
 
