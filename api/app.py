@@ -1,7 +1,7 @@
 import streamlit as st
 from torchvision import transforms as T
 from PIL import Image
-
+import torch
 
 # Display text on a browser
 st.write("# Testing streamlit")
@@ -15,7 +15,7 @@ if upload_file is not None:
     imageLocation.image(img, use_column_width = True)
 
     img = T.ToTensor()(img)
-    model = torch.load('models/VGG16_B753_Acc74/VGG16model.h5', map_location = 'cpu')
+    model = torch.load('droughtwatch/models/VGG16_B753_Acc74/VGG16model.h5', map_location = 'cpu')
     model.eval()
     output = get_prediction(model, img)
     boxes, scores = post_process(output)

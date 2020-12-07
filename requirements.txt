@@ -37,3 +37,4 @@ keras
 
 cloud_tpu_client
 streamlit
+torch
