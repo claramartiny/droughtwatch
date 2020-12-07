@@ -89,3 +89,10 @@ gcp_submit_training:
 		--region ${REGION} \
 		--stream-logs \
 		--master-accelerator count=4,type=nvidia-tesla-t4 \
+
+# ----------------------------------
+#      Run API
+# ----------------------------------
+
+run_api:
+	streamlit run api.app  # load web server with code autoreload

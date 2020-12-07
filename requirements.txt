@@ -36,3 +36,4 @@ ee
 keras
 
 cloud_tpu_client
+streamlit
