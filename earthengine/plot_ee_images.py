@@ -11,6 +11,7 @@ dirlist = lambda di: [os.path.join(di, file) for file in os.listdir(di)]
 training_files = dirlist('earthengine/testimages/')
 
 def parse_visual(data):
+    '''function to transform a tfrecord file into a parsed example'''
     dataset = tf.data.TFRecordDataset(data)
     # pattern for one part file
     # dataset = tf.data.TFRecordDataset('part-r-00099')
@@ -34,6 +35,7 @@ def parse_visual(data):
     return parsed_examples
 
 def get_rgb_img_to_plot(parsed_example, intensify=True):
+    '''function to convert a parsed_example file into a RGB array that can be plotted'''
     rgbArray = np.zeros((65,65,3), 'int64')
     for i, band in enumerate(['B5', 'B3', 'B2']):
         band_data = parsed_example[band].numpy()
@@ -45,6 +47,7 @@ def get_rgb_img_to_plot(parsed_example, intensify=True):
     return rgbArray
 
 def get_X_test_all_bands(parsed_example, intensify=True):
+    '''function to convert a parsed_example file into a 11-band-array that can be used in our models'''
     elevenArray = np.zeros((65,65,11), 'int64')
     for i, band in enumerate(['B1','B4', 'B3', 'B2','B5','B6','B7','B8','B9','B10','B11']):
         band_data = parsed_example[band].numpy()
@@ -54,6 +57,12 @@ def get_X_test_all_bands(parsed_example, intensify=True):
             band_data = band_data*255
         elevenArray[..., i] = band_data
     return elevenArray
+
+def clean_ee_borders(img, number_of_features):
+    '''function to clean black pixels of a satellite picture'''
+    for i in range(number_of_features):
+        img[:,:,i][img[:,:,i]==0] = img[:,:,i].mean()
+    return img
 
 def main(i):
     parsed_examples = parse_visual(training_files[i])
