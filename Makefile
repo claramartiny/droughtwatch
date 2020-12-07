@@ -95,4 +95,4 @@ gcp_submit_training:
 # ----------------------------------
 
 run_api:
-	streamlit run api.app  # load web server with code autoreload
+	streamlit run api/app.py  # load web server with code autoreload
