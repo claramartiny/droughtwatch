@@ -5,4 +5,8 @@
 raw_data/
 droughtwatch/data/
 __pycache__/
+<<<<<<< HEAD
+=======
+notesbooks/data/
+>>>>>>> d8c5d578b08ef6c0a95d7e5850828e416021aef7
 earthengine/testimages/
