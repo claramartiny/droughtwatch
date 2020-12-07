@@ -8,7 +8,7 @@ import math
 tf.enable_eager_execution()
 
 dirlist = lambda di: [os.path.join(di, file) for file in os.listdir(di)]
-training_files = dirlist('earthengine/testimages/')
+training_files = dirlist('earthengine/testimages/') 
 
 def parse_visual(data):
     dataset = tf.data.TFRecordDataset(data)
