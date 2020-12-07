@@ -1,6 +1,7 @@
 import streamlit as st
-from torchvision import transforms as T
+#from torchvision import transforms as T
 from PIL import Image
+from keras.models import model_from_json
 import torch
 
 # Display text on a browser
@@ -9,41 +10,44 @@ st.header("Drought detection using satelite images")
 st.text("Upload a satelite Image for image classification as drought detection:")
 
 #CODE to upload a file
-upload_file = st.file_uploader("Choose an image file", type = ["jpg", "png"])
+upload_file = st.file_uploader("Choose an image file", type = ["tfrecord"])
 
 if upload_file is not None:
-    img = Image.open(upload_file).convert("RGB")
-    imageLocation = st.empty()
-    imageLocation.image(img, use_column_width = True)
-
-    img = T.ToTensor()(img)
+    img = upload_file.read()
+    bytes_data = img.read()
+    type(bytes_data)
+    ba = bytearray(bytes_data)
+    with open("img.tfrecord","wb") as file:
+        file.write(ba)
+  
+    #imageLocation = st.empty()
+    #imageLocation.image(img, use_column_width = True)
+    
+    img = img.numpy()
     # load json and create model
-    json_file = open('../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/\
-        baseline_improved_Acc76_70K_v3_TS.json', 'r')
+    json_file = open('../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
-    loaded_model.load_weights('../droughtwatch/models/\
-        Baseline_model_Acc76_lr_00005_100k_B1toB11model/baseline_improved_Acc76_70K_v3_TS.h5')
-    # print("Loaded model from disk")
+    loaded_model.load_weights("../droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.h5")
+    print("Loaded model from disk")
 
     # evaluate loaded model on test data
-    model = loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.eval()
-    output = get_prediction(model, img)
-    boxes, scores = post_process(output)
-    img = plot_op(img, boxes, scores)
-    imageLocation.image(img, use_column_width= True)
+    loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    output = loaded_model.predict(img)
+    #boxes, scores = post_process(output)
+    #img = plot_op(img, boxes, scores)
+    #imageLocation.image(img, use_column_width= True)
 
 
     #slider or input box
-    nms = st.sidebar.slider('nms', 0.0,1.0, 0.1)
-    boxes, scores = post_process(output, nms_thres= nms)
+    #nms = st.sidebar.slider('nms', 0.0,1.0, 0.1)
+    #boxes, scores = post_process(output, nms_thres= nms)
 
-@st.cache
-def post_process(outputs, nms_thres=0.3):
-    boxes = outputs['boxes'].data
+# @st.cache
+# def post_process(outputs, nms_thres=0.3):
+#     boxes = outputs['boxes'].data
 
 
 
