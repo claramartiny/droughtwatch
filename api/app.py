@@ -8,6 +8,8 @@ import tensorflow.compat.v1 as tf
 import numpy as np
 import argparse
 import math
+import streamlit.components.v1 as components
+
 
 # ----------------------------------
 #      !Functions!
@@ -34,9 +36,9 @@ def parse_visual(data):
 
     parsed_examples = [tf.parse_single_example(data, features) for data in iterator]
     return parsed_examples
-def get_img_from_example(parsed_example, intensify=True):
+def get_img_from_example(parsed_example, features, intensify=True):
     rgbArray = np.zeros((65,65,3), 'int64')
-    for i, band in enumerate(['B4', 'B3', 'B2']):
+    for i, band in enumerate(features):
         band_data = parsed_example[band].numpy()
         if intensify:
             band_data = band_data/np.max(band_data)*255
@@ -67,6 +69,8 @@ st.title("Drought Watch")
 st.header("Drought detection using satelite images")
 st.text("Upload a satelite tfrecord for image classification of drought detection:")
 
+
+
 # Upload a TFrecord file
 upload_file = st.file_uploader("Choose a satelite TFrecord file", type = ["tfrecord"])
 
@@ -74,16 +78,42 @@ if upload_file is not None:
     #transform tfrecord to byte
     bytes_data = upload_file.read()
     type(bytes_data)
-    ba = bytearray(bytes_data)
+    # ba = bytearray(bytes_data)
     with open("img.tfrecord","wb") as file:
         file.write(ba)
     #parse the bytes
     parsed_examples = parse_visual("img.tfrecord")
-    #visualise the satelite image
-    img= get_img_from_example(parsed_examples[0])
+# ----------------------------------
+#      Feature Radio Button
+# ----------------------------------
+    _radio_button = components.declare_component(
+    "radio_button", url="http://localhost:3000",)
+
+    def custom_radio_button(label, options, default, key=None):
+        return _radio_button(label=label, options=options, default=default, key=key)
+
+
+    result = custom_radio_button(
+        "Select bands:",
+        options= ["Red, Green, Blue", "Shortwave infrared 2, Near infrared, Green", "Near infrared, Green, Blue"],
+        default="Red, Green, Blue",
+    )
+    st.write("Bands: %s" % result)
+    if result == "Red, Green, Blue":
+        feature = ["B4","B3","B2"]
+    elif result == "Shortwave infrared 2, Near infrared, Green":
+        feature = ["B7","B5","B3"]
+    elif result == "Near infrared, Green, Blue":
+        feature = ["B5","B3","B2"]
+    # else:
+    #     feature = ['B1','B4', 'B3', 'B2','B5','B6','B7','B8','B9','B10','B11']
+
+# ----------------------------------
+#      Visualize Image
+# ----------------------------------
+    img= get_img_from_example(parsed_examples[0], feature)
     imageLocation = st.empty()
     imageLocation.image(img, use_column_width = True)
-
 # ----------------------------------
 #      Load Model
 # ----------------------------------
@@ -107,18 +137,18 @@ if upload_file is not None:
     X_test = X_test.reshape(1,65,65,11)
     y_pred = loaded_model.predict(X_test)
 
-    st.sidebar.header('Drought Prediction')
-    st.sidebar.write(":sunglasses: :satellite:")
-    st.sidebar.text(y_pred)
+    st.header('Drought Prediction')
+    st.write(":sunglasses: :satellite:")
+    st.text(y_pred)
     # probability = "{:.3f}".format(float(prediction*100))
-    if y_pred[0] == max(y_pred):
-        st.sidebar.text("This satelite image is classified as 0; There is a drought in the region")
-    elif y_pred[1] == max(y_pred):
-        st.sidebar.text("This satelite image is classified as 1; The region is close to encounter a drought, feeds ~ 1 cow")
-    elif y_pred[2] == max(y_pred):
-        st.sidebar.text("This satelite image is classified as 2; There is no droughts in the region although it can feed ~ 2 cows")
+    if y_pred[0][0] == y_pred.all().max():
+        st.text("This satelite image is classified as 0;\nThere is a drought in the region")
+    elif y_pred[0][1] == y_pred.all().max():
+        st.text("This satelite image is classified as 1;\nThe region is close to encounter a drought, feeds ~ 1 cow")
+    elif y_pred[0][2] == y_pred.all():
+        st.text("This satelite image is classified as 2;\nThere is no droughts in the region although it can feed ~ 2 cows")
     else:
-        st.sidebar.text("This satelite image is classified as 3; It is most likely that there is no droughts in the region, it can feed +3 cows")
+        st.text("This satelite image is classified as 3;\nIt is most likely that there is no droughts in the region, it can feed +3 cows")
 
 
 

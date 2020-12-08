@@ -1,0 +1,182 @@
+function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+
+function _extends() { _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; }; return _extends.apply(this, arguments); }
+
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
+
+function _iterableToArrayLimit(arr, i) { if (!(Symbol.iterator in Object(arr) || Object.prototype.toString.call(arr) === "[object Arguments]")) { return; } var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+function _objectWithoutProperties(source, excluded) { if (source == null) return {}; var target = _objectWithoutPropertiesLoose(source, excluded); var key, i; if (Object.getOwnPropertySymbols) { var sourceSymbolKeys = Object.getOwnPropertySymbols(source); for (i = 0; i < sourceSymbolKeys.length; i++) { key = sourceSymbolKeys[i]; if (excluded.indexOf(key) >= 0) continue; if (!Object.prototype.propertyIsEnumerable.call(source, key)) continue; target[key] = source[key]; } } return target; }
+
+function _objectWithoutPropertiesLoose(source, excluded) { if (source == null) return {}; var target = {}; var sourceKeys = Object.keys(source); var key, i; for (i = 0; i < sourceKeys.length; i++) { key = sourceKeys[i]; if (excluded.indexOf(key) >= 0) continue; target[key] = source[key]; } return target; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+
+function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+
+function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
+
+function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
+
+function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
+
+function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+/*
+Copyright (c) 2018-2020 Uber Technologies, Inc.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+*/
+import * as React from 'react';
+import { BaseButton as StyledBaseButton, LoadingSpinner as StyledLoadingSpinner, LoadingSpinnerContainer as StyledLoadingSpinnerContainer } from './styled-components.js';
+import { getSharedProps } from './utils.js';
+import ButtonInternals from './button-internals.js';
+import { defaultProps } from './default-props.js';
+import { getOverrides } from '../helpers/overrides.js';
+import { isFocusVisible, forkFocus, forkBlur } from '../utils/focusVisible.js';
+
+var Button =
+/*#__PURE__*/
+function (_React$Component) {
+  _inherits(Button, _React$Component);
+
+  function Button() {
+    var _getPrototypeOf2;
+
+    var _this;
+
+    _classCallCheck(this, Button);
+
+    for (var _len = arguments.length, _args = new Array(_len), _key = 0; _key < _len; _key++) {
+      _args[_key] = arguments[_key];
+    }
+
+    _this = _possibleConstructorReturn(this, (_getPrototypeOf2 = _getPrototypeOf(Button)).call.apply(_getPrototypeOf2, [this].concat(_args)));
+
+    _defineProperty(_assertThisInitialized(_this), "state", {
+      isFocusVisible: false
+    });
+
+    _defineProperty(_assertThisInitialized(_this), "internalOnClick", function () {
+      var _this$props = _this.props,
+          isLoading = _this$props.isLoading,
+          onClick = _this$props.onClick;
+
+      for (var _len2 = arguments.length, args = new Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+        args[_key2] = arguments[_key2];
+      }
+
+      if (isLoading) {
+        args[0].preventDefault();
+        return;
+      }
+
+      onClick && onClick.apply(void 0, args);
+    });
+
+    _defineProperty(_assertThisInitialized(_this), "handleFocus", function (event) {
+      if (isFocusVisible(event)) {
+        _this.setState({
+          isFocusVisible: true
+        });
+      }
+    });
+
+    _defineProperty(_assertThisInitialized(_this), "handleBlur", function (event) {
+      if (_this.state.isFocusVisible !== false) {
+        _this.setState({
+          isFocusVisible: false
+        });
+      }
+    });
+
+    return _this;
+  }
+
+  _createClass(Button, [{
+    key: "render",
+    value: function render() {
+      var _ref;
+
+      var _this$props2 = this.props,
+          _this$props2$override = _this$props2.overrides,
+          overrides = _this$props2$override === void 0 ? {} : _this$props2$override,
+          size = _this$props2.size,
+          kind = _this$props2.kind,
+          shape = _this$props2.shape,
+          isLoading = _this$props2.isLoading,
+          isSelected = _this$props2.isSelected,
+          startEnhancer = _this$props2.startEnhancer,
+          endEnhancer = _this$props2.endEnhancer,
+          children = _this$props2.children,
+          forwardedRef = _this$props2.forwardedRef,
+          restProps = _objectWithoutProperties(_this$props2, ["overrides", "size", "kind", "shape", "isLoading", "isSelected", "startEnhancer", "endEnhancer", "children", "forwardedRef"]); // Get overrides
+
+
+      var _getOverrides = getOverrides( // adding both (1) BaseButton and (2) Root
+      // (1) because it's a Button under the hood
+      // (2) because we want consistency with the rest of the components
+      overrides.BaseButton || overrides.Root, StyledBaseButton),
+          _getOverrides2 = _slicedToArray(_getOverrides, 2),
+          BaseButton = _getOverrides2[0],
+          baseButtonProps = _getOverrides2[1];
+
+      var _getOverrides3 = getOverrides(overrides.LoadingSpinner, StyledLoadingSpinner),
+          _getOverrides4 = _slicedToArray(_getOverrides3, 2),
+          LoadingSpinner = _getOverrides4[0],
+          loadingSpinnerProps = _getOverrides4[1];
+
+      var _getOverrides5 = getOverrides(overrides.LoadingSpinnerContainer, StyledLoadingSpinnerContainer),
+          _getOverrides6 = _slicedToArray(_getOverrides5, 2),
+          LoadingSpinnerContainer = _getOverrides6[0],
+          loadingSpinnerContainerProps = _getOverrides6[1];
+
+      var sharedProps = _objectSpread({}, getSharedProps(this.props), {
+        $isFocusVisible: this.state.isFocusVisible
+      });
+
+      return React.createElement(BaseButton, _extends({
+        ref: forwardedRef,
+        "data-baseweb": "button"
+      }, isLoading ? (_ref = {}, _defineProperty(_ref, 'aria-label', "loading ".concat(typeof this.props.children === 'string' ? this.props.children : '')), _defineProperty(_ref, 'aria-busy', 'true'), _ref) : {}, sharedProps, restProps, baseButtonProps, {
+        // Applies last to override passed in onClick
+        onClick: this.internalOnClick,
+        onFocus: forkFocus(_objectSpread({}, restProps, {}, baseButtonProps), this.handleFocus),
+        onBlur: forkBlur(_objectSpread({}, restProps, {}, baseButtonProps), this.handleBlur)
+      }), isLoading ? React.createElement(React.Fragment, null, React.createElement("div", {
+        style: {
+          opacity: 0,
+          display: 'flex',
+          height: '0px'
+        }
+      }, React.createElement(ButtonInternals, this.props)), React.createElement(LoadingSpinnerContainer, _extends({}, sharedProps, loadingSpinnerContainerProps), React.createElement(LoadingSpinner, _extends({}, sharedProps, loadingSpinnerProps)))) : React.createElement(ButtonInternals, this.props));
+    }
+  }]);
+
+  return Button;
+}(React.Component);
+
+_defineProperty(Button, "defaultProps", defaultProps);
+
+var ForwardedButton = React.forwardRef(function (props, ref) {
+  return React.createElement(Button, _extends({
+    forwardedRef: ref
+  }, props));
+});
+ForwardedButton.displayName = 'Button';
+export default ForwardedButton;
