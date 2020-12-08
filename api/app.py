@@ -36,14 +36,11 @@ def parse_visual(data):
 
     parsed_examples = [tf.parse_single_example(data, features) for data in iterator]
     return parsed_examples
-def get_img_from_example(parsed_example, features, intensify=True):
+def get_img_from_example(parsed_example, feature, intensify=True):
     rgbArray = np.zeros((65,65,3), 'int64')
-    for i, band in enumerate(features):
+    for i, band in enumerate(feature):
         band_data = parsed_example[band].numpy()
-        if intensify:
-            band_data = band_data/np.max(band_data)*255
-        else:
-            band_data = band_data*255
+        band_data = ((band_data - np.min(band_data)) / ((np.max(band_data)-np.min(band_data)))) * 255
         rgbArray[..., i] = band_data
     return rgbArray
 
