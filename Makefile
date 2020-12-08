@@ -97,5 +97,3 @@ gcp_submit_training:
 run_api:
 	streamlit run api/app.py  # load web server with code autoreload
 
-run_front:
-	api/frontend && npm run start
