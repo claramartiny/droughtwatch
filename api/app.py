@@ -78,7 +78,7 @@ if upload_file is not None:
     #transform tfrecord to byte
     bytes_data = upload_file.read()
     type(bytes_data)
-    # ba = bytearray(bytes_data)
+    ba = bytearray(bytes_data)
     with open("img.tfrecord","wb") as file:
         file.write(ba)
     #parse the bytes
@@ -86,19 +86,15 @@ if upload_file is not None:
 # ----------------------------------
 #      Feature Radio Button
 # ----------------------------------
-    _radio_button = components.declare_component(
-    "radio_button", url="http://localhost:3000",)
+    # _radio_button = components.declare_component(
+    # "radio_button", url="http://localhost:3000",)
 
-    def custom_radio_button(label, options, default, key=None):
-        return _radio_button(label=label, options=options, default=default, key=key)
+    # def custom_radio_button(label, options, default, key=None):
+    #     return _radio_button(label=label, options=options, default=default, key=key)
 
-
-    result = custom_radio_button(
+    result = st.radio(
         "Select bands:",
-        options= ["Red, Green, Blue", "Shortwave infrared 2, Near infrared, Green", "Near infrared, Green, Blue"],
-        default="Red, Green, Blue",
-    )
-    st.write("Bands: %s" % result)
+        ("Red, Green, Blue", "Shortwave infrared 2, Near infrared, Green", "Near infrared, Green, Blue"))
     if result == "Red, Green, Blue":
         feature = ["B4","B3","B2"]
     elif result == "Shortwave infrared 2, Near infrared, Green":
