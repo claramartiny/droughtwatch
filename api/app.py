@@ -62,7 +62,7 @@ def get_X_test_all_bands(parsed_example, intensify=True):
 # --------------------------------------------------------------------------
 
 # Display text on a browser
-st.title("Drought Watch")
+st.title("Drought Watch :sunglasses: :satellite: :crystal_ball:")
 st.header("Drought detection using satelite images")
 st.text("Upload a satelite tfrecord for image classification of drought detection:")
 
@@ -130,18 +130,21 @@ if upload_file is not None:
     X_test = X_test.reshape(1,65,65,11)
     y_pred = loaded_model.predict(X_test)
 
-    st.header('Drought Prediction')
-    st.write(":sunglasses: :satellite:")
+    st.sidebar.header('Drought Prediction')
+    # st.write(":desert: :cactus:")
+    # st.write(":deciduous_tree: :ear_of_rice:")
     st.text(y_pred)
     # probability = "{:.3f}".format(float(prediction*100))
-    if y_pred[0][0] == y_pred.all().max():
-        st.text("This satelite image is classified as 0;\nThere is a drought in the region")
-    elif y_pred[0][1] == y_pred.all().max():
-        st.text("This satelite image is classified as 1;\nThe region is close to encounter a drought, feeds ~ 1 cow")
-    elif y_pred[0][2] == y_pred.all():
-        st.text("This satelite image is classified as 2;\nThere is no droughts in the region although it can feed ~ 2 cows")
-    else:
-        st.text("This satelite image is classified as 3;\nIt is most likely that there is no droughts in the region, it can feed +3 cows")
+    if y_pred[0][0] == max(y_pred[0]):
+        st.sidebar.error("This satelite image is classified as 0;\nThere is a drought in the region :desert: :cactus:")
+        # st.error('Let\'s keep positive, this might be pretty close to a success!')
+    elif y_pred[0][1] == max(y_pred[0]):
+        st.sidebar.warning("This satelite image is classified as 1;\nThe region is close to encounter a drought, feeds ~ 1 cow :cow: :warning:")
+    elif y_pred[0][2] == max(y_pred[0]):
+        st.sidebar.info("This satelite image is classified as 2;\nThere is no droughts in the region although it can only feed ~ 2 cows :cow2:")
+    elif y_pred[0][3] == max(y_pred[0]):
+        st.sidebar.success("This satelite image is classified as 3;\nIt is most likely that there is no droughts in the region, it can feed +3 cows :deciduous_tree: :ear_of_rice:")
+        # st.success('This is a success!')
 
 
 
