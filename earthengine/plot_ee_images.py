@@ -49,7 +49,7 @@ def get_rgb_img_to_plot(parsed_example, intensify=True):
 def get_X_test_all_bands(parsed_example, intensify=True):
     '''function to convert a parsed_example file into a 11-band-array that can be used in our models'''
     elevenArray = np.zeros((65,65,11), 'int64')
-    for i, band in enumerate(['B1','B4', 'B3', 'B2','B5','B6','B7','B8','B9','B10','B11']):
+    for i, band in enumerate(['B1','B2', 'B3', 'B4','B5','B6','B7','B8','B9','B10','B11']):
         band_data = parsed_example[band].numpy()
         if intensify:
             band_data = band_data/np.max(band_data)*255
