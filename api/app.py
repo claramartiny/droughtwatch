@@ -1,8 +1,6 @@
 import streamlit as st
-#from torchvision import transforms as T
 from PIL import Image
 from keras.models import model_from_json
-import torch
 import os
 import tensorflow.compat.v1 as tf
 import numpy as np
@@ -106,7 +104,7 @@ if upload_file is not None:
 # ----------------------------------
     img= get_img_from_example(parsed_examples[0], feature)
     imageLocation = st.empty()
-    imageLocation.image(img, use_column_width = True)
+    imageLocation.image(img, use_column_width = False, width = 500)
 # ----------------------------------
 #      Load Model
 # ----------------------------------
@@ -133,19 +131,27 @@ if upload_file is not None:
     st.sidebar.header('Drought Prediction')
     # st.write(":desert: :cactus:")
     # st.write(":deciduous_tree: :ear_of_rice:")
-    st.text(y_pred)
+    # st.text(y_pred)
     # probability = "{:.3f}".format(float(prediction*100))
     if y_pred[0][0] == max(y_pred[0]):
-        st.sidebar.error("This satelite image is classified as 0;\nThere is a drought in the region :desert: :cactus:")
-        # st.error('Let\'s keep positive, this might be pretty close to a success!')
+        # st.sidebar.error("This satelite image is classified as 0;\nThere is a drought in the region :desert: :cactus:")
+        st.sidebar.error("Classification 0 - Drought :desert: :cactus:")
     elif y_pred[0][1] == max(y_pred[0]):
-        st.sidebar.warning("This satelite image is classified as 1;\nThe region is close to encounter a drought, feeds ~ 1 cow :cow: :warning:")
+        # st.sidebar.warning("This satelite image is classified as 1;\nThe region is close to encounter a drought, feeds ~ 1 cow :cow: :warning:")
+        st.sidebar.warning("Classification 1 :cow: :warning:")
     elif y_pred[0][2] == max(y_pred[0]):
-        st.sidebar.info("This satelite image is classified as 2;\nThere is no droughts in the region although it can only feed ~ 2 cows :cow2:")
+        # st.sidebar.info("This satelite image is classified as 2;\nThere is no droughts in the region although it can only feed ~ 2 cows :cow2:")
+        st.sidebar.info("Classification 2 :cow2:")
     elif y_pred[0][3] == max(y_pred[0]):
-        st.sidebar.success("This satelite image is classified as 3;\nIt is most likely that there is no droughts in the region, it can feed +3 cows :deciduous_tree: :ear_of_rice:")
-        # st.success('This is a success!')
-
+        # st.sidebar.success("This satelite image is classified as 3;\nIt is most likely that there is no droughts in the region, it can feed +3 cows :deciduous_tree: :ear_of_rice:")
+        st.sidebar.success("Classification 3 - No Drought :deciduous_tree: :ear_of_rice:")
+    if st.checkbox("Classification Description"):
+        st.text("""
+            0 - There is a drought in the region. Unable to feed any cow
+            1 - The region is close to encounter a drought. It can only feed ~ 1 cow
+            2 - There is no drought in the region, although it can only feed ~ 2 cows
+            3 - There is no drought in the region, can feed +3 cows
+            """)
 
 
 #     output = loaded_model.predict(parsed_examples)
