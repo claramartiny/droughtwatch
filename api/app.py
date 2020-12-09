@@ -42,17 +42,20 @@ def get_img_from_example(parsed_example, feature, intensify=True):
         rgbArray[..., i] = band_data
     return rgbArray
 
+def scale(band):
+    min = np.min(band[np.nonzero(band)])
+    max = np.max(band)
+    return 255*(band-min)/(max-min)
+
 def get_X_test_all_bands(parsed_example, intensify=True):
-    '''function to convert a parsed_example file into a 11-band-array that can be used in our models'''
-    elevenArray = np.zeros((65,65,11), 'int64')
-    for i, band in enumerate(['B1','B4', 'B3', 'B2','B5','B6','B7','B8','B9','B10','B11']):
+    '''function to convert a parsed_example file into a 7-band-array that can be used in our models'''
+    sevenArray = np.zeros((65,65,7), 'int64')
+    for i, band in enumerate(['B2', 'B3', 'B4','B5','B6','B7','B8']):
         band_data = parsed_example[band].numpy()
-        if intensify:
-            band_data = band_data/np.max(band_data)*255
-        else:
-            band_data = band_data*255
-        elevenArray[..., i] = band_data
-    return elevenArray
+        if band_data.all() != 0:
+          band_data = np.round(scale(band_data))
+        sevenArray[..., i] = band_data
+    return sevenArray.reshape(1,65,65,7)
 
 
 # --------------------------------------------------------------------------
@@ -112,12 +115,12 @@ if upload_file is not None:
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
     head, tail = os.path.split(ROOT_DIR)
     print(ROOT_DIR)
-    json_file = open(head + '/droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.json', 'r')
+    json_file = open(head + '/droughtwatch/models/baseline_model_Acc76_vfinal_8bands/baseline_improved_Acc76_100K_vfinal_TS.json', 'r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
-    loaded_model.load_weights(head + '/droughtwatch/models/Baseline_model_Acc76_lr_00005_100k_B1toB11/baseline_improved_Acc76_70K_v3_TS.h5')
+    loaded_model.load_weights(head + '/droughtwatch/models/baseline_model_Acc76_vfinal_8bands/baseline_improved_Acc76_100K_vfinal_TS.h5')
 
     loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
@@ -125,7 +128,7 @@ if upload_file is not None:
 #      Prediction
 # ----------------------------------
     X_test = get_X_test_all_bands(parsed_examples[0])
-    X_test = X_test.reshape(1,65,65,11)
+    X_test = X_test.reshape(1,65,65,7)
     y_pred = loaded_model.predict(X_test)
 
     st.sidebar.header('Drought Prediction')
