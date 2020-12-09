@@ -29,16 +29,16 @@ def intensify(X):
         X[j] = img
     return X
 
-def holdout(X_train, X_val_total, y_train, y_val_total, proportion=(2/3)):
+def holdout(X_train_total, X_val_total, y_train_total, y_val_total, proportion=(2/3)):
     '''Hold out function'''
     
     k = int(proportion * SIZE_TRAIN) # Modify this only
 
-    X_tr, y_tr = X_train["image"][:k], y_train[:k]
-    X_val, y_val = X_train["image"][k:], y_train[k:]
+    X_train, y_train = X_train_total["image"][:k], y_train_total[:k]
+    X_val, y_val = X_train_total["image"][k:], y_train_total[k:]
     X_test, y_test = X_val_total["image"], y_val_total
     
-    return X_tr, y_tr, X_val, y_val, X_test, y_test
+    return X_train, y_train, X_val, y_val, X_test, y_test
 
 def save_model(model, upload=True, auto_remove=True):
     """Save the model into 2 versions: a .json and .h5 and upload them on Google Storage /models folder"""
