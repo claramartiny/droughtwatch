@@ -1,11 +1,11 @@
 import os
+import sys
+import argparse
+import argparse
 import pandas as pd
 import numpy as np
+
 import tensorflow.compat.v1 as tf
-import argparse
-import math
-import numpy as np
-import sys
 from tensorflow.keras import optimizers
 from tensorflow.keras import layers, initializers
 from tensorflow.keras import models
@@ -14,107 +14,171 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from tensorflow.keras.layers.experimental.preprocessing import Resizing
 from tensorflow.keras.applications import EfficientNetB3
-import joblib
+
 from termcolor import colored
 from google.cloud import storage
 from keras.models import model_from_json
 
 from droughtwatch.get_data import get_data
 from droughtwatch.clean_data import clean_data
-from droughtwatch.utils import dataset_select_channels
-
+from droughtwatch.utils import dataset_select_channels, save_model, holdout, export_to_csv, save_csv
 from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
 
+# Set up for GCP
 BUCKET_NAME = 'tfrecords_data'
-MODEL_NAME = 'efficientnet_model'
-MODEL_VERSION = 'v1_LG_size0.5'
-
+MODEL_NAME = 'model_cnn'
+MODEL_VERSION = 'model_cnn_vfinal'
 
 tf.enable_eager_execution()
 
-# Features selection
 
-#model 1: baseline model
+
+# Final model: fine-tuned CNN model
+##------------------------------------------------------------------------------------------------
+def final_model():
+    '''Final model (CNN) that takes X_train with ['B2','B3','B4','B5','B6','B7','B8']'''  
+    
+    model = tf.keras.Sequential()
+
+    model.add(tf.keras.layers.InputLayer(input_shape=(65, 65, 7), name='image'))
+    
+    model.add(layers.Conv2D(32, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.Conv2D(32, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+    
+    model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+    model.add(layers.Dropout(0.18))
+    
+    model.add(layers.Conv2D(128, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.Conv2D(128, kernel_size=(2, 2), activation='relu'))
+    model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+    model.add(layers.Dropout(0.18))
+    
+    model.add(layers.Flatten())
+    
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(64, activation='relu'))
+    
+    model.add(layers.Dense(4, activation='softmax'))
+
+    model.compile(loss=tf.keras.losses.categorical_crossentropy,
+              optimizer=Adam(lr=0.00005),
+              metrics=['accuracy'])
+
+    return model
+
+# ----------------------------------
+#      Training models
+# ----------------------------------
+
+# Model 1: baseline model
 ##------------------------------------------------------------------------------------------------
 
 def baseline_model():
+    '''Inspired from the baseline model from W&B. We changed kernel size from (3,3) to (2,2), takes X_train with ['B2','B3','B4','B5','B6','B7','B8'] '''
+    
     model = tf.keras.Sequential()
+    
     model.add(tf.keras.layers.InputLayer(input_shape=(65, 65, 7), name='image'))
+    
     model.add(layers.Conv2D(32, kernel_size=(2, 2), activation='relu'))
     model.add(layers.MaxPooling2D(pool_size=(2, 2)))
+    
     model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
     model.add(layers.Conv2D(64, kernel_size=(2, 2), activation='relu'))
     model.add(layers.MaxPooling2D(pool_size=(2, 2)))
     model.add(layers.Dropout(0.2))
+    
     model.add(layers.Conv2D(filters=128, kernel_size=(2, 2), activation='relu'))
     model.add(layers.Conv2D(filters=128, kernel_size=(2, 2), activation='relu'))
     model.add(layers.MaxPooling2D(pool_size=(2, 2)))
     model.add(layers.Dropout(0.2))
+    
     model.add(layers.Flatten())
+    
     model.add(layers.Dense(64, activation='relu'))
     model.add(layers.Dense(64, activation='relu'))
+    
     model.add(layers.Dense(4, activation='softmax'))
-    # set up optimizer
+    
     model.compile(loss=tf.keras.losses.categorical_crossentropy,
               optimizer='adam',
               metrics=['accuracy'])
-    return model
-
-def train_baseline(X_train, X_val, y_train, y_val):
-    # We only need B2,B3 and B4
-    model = baseline_model()
-    es = EarlyStopping(monitor='val_accuracy', patience=20, verbose=1, restore_best_weights=True)
-
-    model.fit(X_train, y_train,
-            batch_size=32,
-            epochs=1,
-            validation_data=(X_val, y_val),
-            callbacks=[es],
-            verbose=1)
+    
     return model
 
 
-#model 2: VGG16 model
+# Model 2: VGG16 model
 ##------------------------------------------------------------------------------------------------
 ### Convert images to RGB format first using dataset_select_channels ###
 
- 
-
-
-#model 3: EfficientNetB3 model
-##------------------------------------------------------------------------------------------------
-def efficientnet_model():
-    ''' Modèle efficientnet B3'''
-    sys.setrecursionlimit(sys.getrecursionlimit() * 1500)
+def vgg16_model(X_train):
+     '''Transfer learning model that takes X_train with ['B4','B3','B2']'''
     
-    IMG_SIZE = 300
+    model = VGG16(weights="imagenet", 
+                include_top=False, 
+                input_shape=X_train[0].shape)
 
-    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
-    x = Resizing(300, 300, interpolation="bilinear")(inputs)
-    model = EfficientNetB3(include_top=False, input_tensor=x, weights="imagenet")
-
-    # Freeze the pretrained weights
-    model.trainable = False
-
-    # Rebuild top
-    x = layers.GlobalAveragePooling2D(name="avg_pool")(model.output)
-    x = layers.BatchNormalization()(x)
-
-    top_dropout_rate = 0.2
-    x = layers.Dropout(top_dropout_rate, name="top_dropout")(x)
-    outputs = layers.Dense(4, activation="softmax", name="pred")(x)
-
-    # Compile
-    model = tf.keras.Model(inputs, outputs, name="EfficientNet")
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
-    model.compile(
-        optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"]
-    )
+    model.compile(loss='categorical_crossentropy',
+                optimizer='adam',
+                metrics=['accuracy'])
 
     return model
 
+
+# Model 3: EfficientNetB3 model
+##------------------------------------------------------------------------------------------------
+
+def efficientnet_model():
+    ''' Transfer learning model that takes X_train with ['B7','B6','B5']'''
+    
+    IMG_SIZE = 300
+    inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    
+    x = inputs
+    x = Resizing(300, 300)(x)
+    
+    activationnetB3 = EfficientNetB3(include_top=False, weights = "imagenet")(x)
+    
+    outputsflatten = layers.Flatten()(activationnetB3)
+    
+    outputsdense1 = layers.Dense(64, activation = "relu")(outputsflatten)
+    outputsdense2 = layers.Dense(64, activation = "relu")(outputsdense1)
+    
+    outputsdense3 = layers.Dense(4, activation = "softmax")(outputsdense2)
+    
+    model = tf.keras.Model(inputs, outputsdense3)
+    
+    model.compile(optimizer="adam", 
+                loss="categorical_crossentropy", 
+                metrics=["accuracy"])
+    
+    return model
+
+
+# Train functions
+##------------------------------------------------------------------------------------------------
+
+def train_model():
+    '''Function to fit models (except EfficientNet)'''
+
+    es = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
+
+    history = model.fit(X_train, y_train,
+                        batch_size=32,
+                        epochs=1,
+                        validation_data=(X_val, y_val),
+                        callbacks=[es],
+                        verbose=1)
+
+    return history
+
+
 def train_efficient_net(X_train, X_val, y_train, y_val):
-    # We only need B2,B3 and B4
+    '''Function to fit Efficient Net model'''
+
     es = EarlyStopping(monitor='val_loss', patience=20, verbose=1, restore_best_weights=True)
 
     datagen = tf.keras.preprocessing.image.ImageDataGenerator()
@@ -123,61 +187,12 @@ def train_efficient_net(X_train, X_val, y_train, y_val):
     X_val = Resizing(300, 300, interpolation="bilinear")(X_val)
 
     history = model.fit(datagen.flow(X_train, y_train, batch_size=32),
-                       epochs=1000,
+                        epochs=1000,
                         validation_data = (X_val, y_val),
                         verbose = 1,
                         callbacks=[es])
+    
     return history
-
-def save_model(model, upload=True, auto_remove=True):
-    """Save the model into 2 versions: a .json and .h5 and upload them on Google Storage /models folder"""
-    model_json = model.to_json()
-    local_model_name = 'model.json'
-    local_weights_name = 'model.h5'
-    with open(local_model_name, "w") as json_file:
-        json_file.write(model_json)
-        #Serialize weights to HDF5
-    model.save_weights("model.h5")
-    print(colored("model.json saved locally", "green"))
-
-    # Add upload of model.json to storage here
-    client = storage.Client().bucket(BUCKET_NAME)
-
-    storage_location = '{}/{}/{}/{}'.format(
-         'models',
-         MODEL_NAME,
-         MODEL_VERSION,
-         local_model_name)
-    blob = client.blob(storage_location)
-    blob.upload_from_filename(local_model_name)
-    print("uploaded model.json to gcp cloud storage under \n => {}".format(storage_location))
-
-    storage_location = '{}/{}/{}/{}'.format(
-         'models',
-         MODEL_NAME,
-         MODEL_VERSION,
-         local_weights_name)
-    blob = client.blob(storage_location)
-    blob.upload_from_filename(local_weights_name)
-    print("uploaded model.h5 to gcp cloud storage under \n => {}".format(storage_location))
-
-
-def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
-    ''' not finished'''
-    # load json and create model
-    json_file = open(modeljson_from_gcp, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    loaded_model = model_from_json(loaded_model_json)
-    # load weights into new model
-    loaded_model.load_weights("model.h5")
-    print("Loaded model from disk")
-
-    # evaluate loaded model on test data
-    loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-    score = loaded_model.evaluate(X_testrgb, y_test, verbose=1)
-    print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
-
 
 
 
@@ -185,77 +200,44 @@ def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
 ##------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    print(colored("############  loading data ############", "blue"))
-    X_train, X_val_total, y_train, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
-    print(colored(f"############  data is loaded ############", "green"))
 
-    #Divide the data in a train set, a validation set, and a test set and store it in variables as tensors
-    print("SIZE_TRAIN:"+str(SIZE_TRAIN))
-    k = int((2/3) * SIZE_TRAIN)
-    print(k)
-    print(colored("############  Proceding to Hold-Out ############", "blue"))
-    X_tr = X_train["image"][:k]
-    y_tr = y_train[:k]
-    print(X_tr.shape)
-    print(y_tr.shape)
-    X_val = X_train["image"][k:]
-    y_val = y_train[k:]
-    X_test = X_val_total["image"]
-    y_test = y_val_total
-    print(X_val.shape)
-    print(y_val.shape)
-    print(colored(f"############  Hold-Out OK ############", "green"))
+    # Load data
+    X_train_total, X_val_total, y_train_total, y_val_total = get_data(SIZE_TRAIN, SIZE_VAL, local = True)
+    print(colored(f"------ Data loaded ------", "green"))
 
-    print(colored("############  Deleting unused variables ############", "blue"))
-    del X_train,y_train,X_val_total,y_val_total
-    print(colored(f"############  Deleted unused variables ############", "green"))
+    # Hold out
+    X_train, y_train, X_val, y_val, X_test, y_test = holdout(X_train_total, X_val_total, y_train_total, y_val_total)
 
-    #Clean data
-    print(colored("############  Cleaning Data ############", "blue"))
-    X_tr,y_tr = clean_data(X_tr,y_tr)
-    X_val,y_val = clean_data(X_val,y_val)
-    X_test,y_test = clean_data(X_test,y_test)
-    print(colored(f"############  Data-Cleaned ############", "green"))
+    del X_train_total, y_train_total, X_val_total, y_val_total
+
+    # Clean data
+    X_train, y_train = clean_data(X_train, y_train)
+    X_val, y_val = clean_data(X_val, y_val)
+    X_test, y_test = clean_data(X_test, y_test)
 
     # Select features
-    #list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7']
-    list_of_channels = ['B4', 'B3', 'B2'] # Modify this for each model
-    print(colored("############  Selecting color channels for this model ############", "blue"))
-    X_tr = dataset_select_channels(X_tr,list_of_channels)
-    X_val = dataset_select_channels(X_val,list_of_channels)
-    X_test = dataset_select_channels(X_test,list_of_channels)
-    print(colored(f"############ channels selection done ############", "green"))
+    list_of_channels = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','B8'] # Modify this for each model, full_list_of_channels = ['B1','B4', 'B3', 'B2', 'B5', 'B6', 'B7','B8','B9','B10','B11']
+    X_train = dataset_select_channels(X_train, list_of_channels)
+    X_val = dataset_select_channels(X_val, list_of_channels)
+    X_test = dataset_select_channels(X_test, list_of_channels)
 
-    # Model to run:
-    #----- Instanciate model ------
-    model = efficientnet_model() #Modify
+    # Instanciate model 
+    model = final_model() #Modify when changing models
 
-    #----- Train model ------
-    print(colored("############  Training Model ############", "blue"))
-    history = train_efficient_net(X_tr, X_val, y_tr, y_val)
-    print(colored(f"############  Model Trained ############", "green"))
+    # Train model  
+    history = train_model()
+    print(colored(f"------ Model Trained ------", "green"))
 
-    #----- Exporting history.csv ------
-    print(colored("############  Exporting history as CSV ############", "blue"))
-    adict = {}
-    adict["accuracy"]=history.history["accuracy"]
-    adict["val_accuracy"]=history.history["val_accuracy"]
-
-    #----- Evaluate model ------
-    print(colored("############  Evaluating model ############", "blue"))
-    X_test = Resizing(300, 300)(X_test)
+    # Evaluate model    
     results = model.evaluate(X_test,y_test,verbose=1)
-    print(f'Accuracy:{results[1]}')
-    adict["test_accuracy"]= results[1]
-    df = pd.DataFrame(adict)
-    df.to_csv("historyandtest_accuracy.csv")
-    print(df)
-    print(colored("############ history.csv exported ############", "blue"))
+    print(f'The accuracy of the model is:{results[1]}')
 
-    #----- Save model ------
-    print(colored("############   Saving model    ############", "blue"))
+    # Save model
     save_model(model)
-    print(colored("############   Model Saved    ############", "green"))
+
+    # Export history in csv
+    df = export_to_csv(history)
+    save_csv(df)
 
 
 
@@ -268,17 +250,56 @@ if __name__ == "__main__":
 
 
 
-## if name = main
-
-
-#Step 1 : Load & parse data
-#Step 2 : Pipeline: Data cleaning + Channel selection
-#Step 3 : Split X_train, X_test, y_train, y_test
-#Step 4 :
-
-
-#Step 1 : setup MLFLOW
-#Step 2 : get pipeline
 
 
 
+### Other version of efficientnet_mdeol
+
+# def efficientnet_model():
+
+#     sys.setrecursionlimit(sys.getrecursionlimit() * 1500)
+    
+#     IMG_SIZE = 300
+
+#     inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+#     x = Resizing(300, 300, interpolation="bilinear")(inputs)
+#     model = EfficientNetB3(include_top=False, input_tensor=x, weights="imagenet")
+
+#     # Freeze the pretrained weights
+#     model.trainable = False
+
+#     # Rebuild top
+#     x = layers.GlobalAveragePooling2D(name="avg_pool")(model.output)
+#     x = layers.BatchNormalization()(x)
+
+#     top_dropout_rate = 0.2
+#     x = layers.Dropout(top_dropout_rate, name="top_dropout")(x)
+#     outputs = layers.Dense(4, activation="softmax", name="pred")(x)
+
+#     # Compile
+#     model = tf.keras.Model(inputs, outputs, name="EfficientNet")
+#     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
+#     model.compile(
+#         optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"]
+#     )
+
+#     return model
+
+
+
+
+# def load_model_from_gcp(modeljson_from_gcp, X_testrgb,):
+#     ''' not finished'''
+#     # load json and create model
+#     json_file = open(modeljson_from_gcp, 'r')
+#     loaded_model_json = json_file.read()
+#     json_file.close()
+#     loaded_model = model_from_json(loaded_model_json)
+#     # load weights into new model
+#     loaded_model.load_weights("model.h5")
+#     print("Loaded model from disk")
+
+#     # evaluate loaded model on test data
+#     loaded_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+#     score = loaded_model.evaluate(X_testrgb, y_test, verbose=1)
+#     print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))
