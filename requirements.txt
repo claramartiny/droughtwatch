@@ -1,7 +1,6 @@
 # packaging
 pip>=9
 setuptools>=26
-twine
 wheel>=0.29
 
 # data science
@@ -38,5 +37,4 @@ keras
 #Streamlit
 cloud_tpu_client
 streamlit
-torch
 Pillow

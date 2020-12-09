@@ -1,0 +1,9 @@
+*.egg-info
+.coverage
+.ipynb_checkpoints
+.DS_Store
+raw_data/
+droughtwatch/data/
+__pycache__/
+notesbooks/data/
+earthengine/testimages/
