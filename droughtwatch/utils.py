@@ -2,8 +2,15 @@ import numpy as np
 import pandas as pd
 from keras.models import model_from_json
 from google.cloud import storage
+from termcolor import colored
+from droughtwatch.params import IMG_DIM, NUM_CLASSES, SIZE, SIZE_TRAIN, SIZE_VAL, TOTAL_TRAIN, TOTAL_VAL
 
 features_list = [ 'B1', 'B4', 'B3', 'B2', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11']
+
+# Set up for GCP
+BUCKET_NAME = 'tfrecords_data'
+MODEL_NAME = 'model_cnn'
+MODEL_VERSION = 'model_cnn_vfinal'
 
 def dataset_select_channels(train_images,list_of_channels):
     ''' Input a dataset and a list of channels as a list:

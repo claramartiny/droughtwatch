@@ -31,8 +31,6 @@ MODEL_VERSION = 'model_cnn_vfinal'
 
 tf.enable_eager_execution()
 
-
-
 # Final model: fine-tuned CNN model
 ##------------------------------------------------------------------------------------------------
 def final_model():
@@ -64,7 +62,7 @@ def final_model():
     model.add(layers.Dense(4, activation='softmax'))
 
     model.compile(loss=tf.keras.losses.categorical_crossentropy,
-              optimizer=Adam(lr=0.00005),
+              optimizer=tf.keras.optimizers.Adam(lr=0.00005),
               metrics=['accuracy'])
 
     return model
@@ -114,18 +112,18 @@ def baseline_model():
 ##------------------------------------------------------------------------------------------------
 ### Convert images to RGB format first using dataset_select_channels ###
 
-def vgg16_model(X_train):
-     '''Transfer learning model that takes X_train with ['B4','B3','B2']'''
+# def vgg16_model(X_train):
+#      '''Transfer learning model that takes X_train with ['B4','B3','B2']'''
     
-    model = VGG16(weights="imagenet", 
-                include_top=False, 
-                input_shape=X_train[0].shape)
+#     model = VGG16(weights="imagenet", 
+#                 include_top=False, 
+#                 input_shape=X_train[0].shape)
 
-    model.compile(loss='categorical_crossentropy',
-                optimizer='adam',
-                metrics=['accuracy'])
+#     model.compile(loss='categorical_crossentropy',
+#                 optimizer='adam',
+#                 metrics=['accuracy'])
 
-    return model
+#     return model
 
 
 # Model 3: EfficientNetB3 model
